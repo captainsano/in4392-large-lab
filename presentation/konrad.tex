@@ -52,22 +52,17 @@ stages
 
 \begin{frame}[t]{Progress tracking}
 \vspace{0.15cm}
-\textbf{Problem}: \\
-\vspace{0.15cm}
-Notification can only be sent if there are no outstanding messages
-
-  \vspace{0.5cm}
-  \textbf{Solution}: Own progress tracking protocol
   \begin{itemize}\setlength\itemsep{0.25cm}
-     \item Occurence Counters gets updated after a Broadcast to all workers
-     \item Local counter never moves ahead of global counter
-    \item Allows safe delivery of notifications
+     \item local occurrence counter get's not updated directly
+     \item change of occurrence gets broadcasted
+    \item change gets queued and modified in FIFO order
+    \item therefore the local counter is never before the global counter
    \end{itemize}
 
-\end{frame}
+\pause
 
-\begin{frame}[t]{Optimizing broadcast updates}
   \vspace{0.15cm}
+  Optimize broadcast
    \begin{itemize}\setlength\itemsep{0.25cm}
      \item Rely on the logical graph, not the physical.
      \item Buffer before broadcast.
@@ -91,35 +86,49 @@ Notification can only be sent if there are no outstanding messages
      	\item full checkpoint
      \end{itemize}
    \end{itemize}
-
-\end{frame}
-
-
- \begin{frame}[t]{}
-  \vspace{0.15cm}
-Tradeoff between Performance and Durability
-   \begin{itemize}\setlength\itemsep{0.25cm}
-     \item paper favours performance over durablity
-     \item Prelies on durable input and output
+   
+   \pause
+    \vspace{0.15cm}
+   Checkpointing
+   \begin{itemize}
+   \item Message delivery gets stoped
+   \item Outstanding OnRecieve Events get delivered
+   \item save to file
+   \end{itemize}
+   Restoring
+   \begin{itemize}
+   \item revert from the last checkpoint
+   \item vertexes of failed process get reassigned
    \end{itemize}
 
 \end{frame}
 
+
+ %\begin{frame}[t]{}
+ % \vspace{0.15cm}
+%Tradeoff between Performance and Durability
+%   \begin{itemize}\setlength\itemsep{0.25cm}
+%     \item paper favours performance over durablity
+%     \item Prelies on durable input and output
+%   \end{itemize}
+%\end{frame}
+
  \begin{frame}[t]{Micro Stragglers}
   \vspace{0.15cm}
-Naiad is sensitive to latency but tiny interruptions can decrease overall performance  
-
-\begin{tabular}{ l r }
-  Iterative Computation & $$<$$ 1 MS \\
-  GC, Package loss   & 10th of MS \\
-\end{tabular}
-
+small latencies which can add up in a large system
+  \vspace{0.15cm}
+ 
 Network
 
 \begin{itemize}\setlength\itemsep{0.25cm}
 \item Disable Nagle's algorithms
 \item Set smaller retry timeout for package loss
 \item Use different network protocols in datacenters for computing
+\end{itemize}
+
+Data structure contention
+\begin{itemize}
+\item solved by smaller clock granularity
 \end{itemize}
 
 Garbage Collection
