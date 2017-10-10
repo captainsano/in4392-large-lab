@@ -1,6 +1,5 @@
 \begin{frame}[t]{Distributed Implemenation}
   \vspace{0.25cm}
-
   \begin{center}
     \emph{Naiad} is the distributed implementation of timely dataflow
   \end{center}
@@ -11,11 +10,13 @@
   \end{center}
   \begin{itemize}\setlength\itemsep{0.25cm}
     \item A program consists of logical stages (A, B, C)
-    \item H(m) controls exchange of data between stages
+    \item $H(m)$ -- Partitioning function
+    \item $H(m)$ controls exchange of data between stages
   \end{itemize}
 \end{frame}
 
 \begin{frame}[t]{Data Parallelism}
+  \vspace{-0.5cm}
    \begin{center}
     \includegraphics[height=0.5\textheight]{5}
    \end{center}
@@ -53,52 +54,53 @@ stages
 \begin{frame}[t]{Progress tracking}
 \vspace{0.15cm}
   \begin{itemize}\setlength\itemsep{0.25cm}
-     \item local occurrence counter get's not updated directly
-     \item change of occurrence gets broadcasted
-    \item change gets queued and modified in FIFO order
-    \item therefore the local counter is never before the global counter
+     \item Local occurrence counter don't get updated directly
+     \item Change of occurrence gets broadcasted
+     \item Change gets queued and modified in FIFO order
+     \item Therefore the local counter is never before the global counter
    \end{itemize}
-
 \pause
 
-  \vspace{0.15cm}
+  \vspace{0.25cm}
   Optimize broadcast
    \begin{itemize}\setlength\itemsep{0.25cm}
-     \item Rely on the logical graph, not the physical.
-     \item Buffer before broadcast.
-     \item Optimistically first broadcast via UDP to reduce latency.
-     \item Wake up threads with either broadcast or unicast with programming primitives.
+     \item Rely on the logical graph, not the physical
+     \item Buffer before broadcast
+     \item Optimistically first broadcast via UDP to reduce latency
+     \item Wake up threads with either broadcast or unicast with programming primitives
    \end{itemize}
 
 \end{frame}
 
- \begin{frame}[t]{Fault tolerance and availability}
+ \begin{frame}[t]{Fault tolerance and Availability}
   \vspace{0.15cm}
-  CHECKPOINT and RESTORE interface
+  \textsc{CHECKPOINT} and \textsc{RESTORE} interface
    \begin{itemize}\setlength\itemsep{0.25cm}
      \item Vertex
 	 \begin{itemize}\setlength\itemsep{0.25cm}
-	 	\item either log data or
-        \item full checkpoint when requested
+	 	\item Either log data or
+        \item Full checkpoint when requested
 	 \end{itemize}
-     \item Progress Tracking Protocoll
+     \item Progress Tracking Protocol
      \begin{itemize}\setlength\itemsep{0.25cm}
-     	\item full checkpoint
+     	\item Full checkpointing
      \end{itemize}
    \end{itemize}
    
    \pause
-    \vspace{0.15cm}
+   \vspace{0.15cm}
    Checkpointing
    \begin{itemize}
-   \item Message delivery gets stoped
-   \item Outstanding OnRecieve Events get delivered
-   \item save to file
+     \item Message delivery gets stopped
+     \item Outstanding \textsc{OnRecv} Events get delivered
+     \item Save to disk
    \end{itemize}
+
+   \vspace{0.15cm} 
    Restoring
    \begin{itemize}
-   \item revert from the last checkpoint
-   \item vertexes of failed process get reassigned
+   \item Revert from the last checkpoint
+   \item Vertexes of failed process get reassigned
    \end{itemize}
 
 \end{frame}
@@ -115,29 +117,29 @@ stages
 
  \begin{frame}[t]{Micro Stragglers}
   \vspace{0.15cm}
-small latencies which can add up in a large system
-  \vspace{0.15cm}
+  Tiny latencies which can add up in a large system
  
-Network
+  \vspace{0.25cm}
+  Network
+  \begin{itemize}\setlength\itemsep{0.15cm}
+    \item Disable Nagle's algorithms
+    \item Set smaller retry timeout for package loss
+    \item Use different network protocols in datacenters for computing
+  \end{itemize}
 
-\begin{itemize}\setlength\itemsep{0.25cm}
-\item Disable Nagle's algorithms
-\item Set smaller retry timeout for package loss
-\item Use different network protocols in datacenters for computing
-\end{itemize}
+  \vspace{0.25cm}
+  Data structure contention
+  \begin{itemize}
+    \item solved by smaller clock granularity
+  \end{itemize}
 
-Data structure contention
-\begin{itemize}
-\item solved by smaller clock granularity
-\end{itemize}
-
-Garbage Collection
-
-\begin{itemize}\setlength\itemsep{0.25cm}
-\item avoid object allocation
-\item use buffer pools
-\item use value types
-\end{itemize}
+  \vspace{0.25cm}
+  Garbage Collection
+  \begin{itemize}\setlength\itemsep{0.15cm}
+    \item avoid object allocation
+    \item use buffer pools
+    \item use value types
+  \end{itemize}
 
 \end{frame}
 
@@ -168,7 +170,7 @@ Garbage Collection
 \begin{frame}[t]{Prototype Program}
 
 \begin{center}
-  \includegraphics[width=0.9\textwidth]{code}
+  \includegraphics[width=0.8\textwidth]{code}
 \end{center}
 
 \end{frame}
