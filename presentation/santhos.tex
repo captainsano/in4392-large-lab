@@ -1,125 +1,96 @@
-\begin{frame}[t]{Introduction - The Problem}
-  \vspace{0.25cm}
+\begin{frame}[t]{Introduction}
+  \vspace{-0.70cm}
+  \begin{center}
+    \includegraphics[width=0.76\textwidth]{1}
+  \end{center}
 
-  \textbf{Batch}
-  \begin{itemize}
-    \item Synchronous iteration
-    \item Good consistency
-    \item Poor latency
-  \end{itemize}
+  \pause
+  \begin{columns}[t]
+    \hspace{0.09\textwidth}
+    \column{0.30\textwidth}
+      \textbf{Batch}
+      \begin{itemize}
+        \item Iteration
+        \item Consistency
+        \item Poor latency
+      \end{itemize}
+    
+    \column{0.30\textwidth}
+      \textbf{Stream}
+      \begin{itemize}
+        \item No iteration
+        \item No consistency
+        \item Low latency
+      \end{itemize}
 
-  \vspace{0.25cm}
-
-  \textbf{Stream}
-  \begin{itemize}
-    \item Low latency
-    \item Weak consistency
-    \item Difficult to iterate
-  \end{itemize}
-
-  \vspace{0.25cm}
-  
-  \textbf{Graph}
-  \begin{itemize}
-    \item Supports iteration
-    \item Poor latency
-  \end{itemize}
-
-  \only<2->{
-    \begin{textblock*}{4cm}(0.75\textwidth,0.25\textheight)
-      \begin{exampleblock}{}
-        \vspace{0.5cm}
-        \begin{center}
-          \Large{What if we want \\ all of this?}
-        \end{center}
-        \vspace{0.15cm}
-      \end{exampleblock}
-    \end{textblock*}
-  }
-
+    \column{0.30\textwidth}
+      \textbf{Graph}
+      \begin{itemize}
+        \item Iteration
+        \item Vertex-oriented Programming
+      \end{itemize}
+  \end{columns}
 \end{frame}
 
-\begin{frame}[t]{Dataflow programming}
+\begin{frame}[t]{Introduction}
   \vspace{0.25cm}
 
-  \begin{center}
-    \begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=2cm,
-      thick,main node/.style={circle,draw,font=\sffamily\Large\bfseries}]
-
-      \node[main node] (a) {A};
-      \node[main node] (b) [right of=a] {B};
-      \node[main node] (c) [right of=b] {C};
-      \node[main node] (d) [right of=c] {D};
-      \node[main node] (e) [right of=d] {E};
-
-        \path[every node/.style={font=\sffamily\small}]
-        (a) edge (b) 
-        (b) edge (c) 
-        (c) edge (d) 
-        (d) edge (e);
-    \end{tikzpicture}
-  \end{center}
- 
-  \vspace{0.5cm}
-  \begin{center}
-    \begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=2cm,
-      thick,main node/.style={circle,draw,font=\sffamily\Large\bfseries}]
-
-      \node[main node] (a) {A};
-      \node[main node] (b) [right of=a] {B};
-      \node[main node] (c) [right of=b] {C};
-      \node[main node] (d) [below of=b] {D};
-      \node[main node] (e) [right of=c] {E};
-
-        \path[every node/.style={font=\sffamily\small}]
-        (a) edge (b) 
-        (b) edge (c) 
-        (c) edge (d) 
-        (d) edge (b)
-        (c) edge (e);
-    \end{tikzpicture}
-  \end{center}
-
-  \vspace{0.5cm}
-  \begin{center}
-    Least common denominator is \emph{Dataflow}
-  \end{center}
-
+  \begin{itemize}
+    \setlength\itemsep{0.15cm}
+    \item General purpose system
+    \item Support high-level programming models
+    \item Iteration on real-time data
+    \item Supports interactive queries on fresh,\\ consistent view of results
+    \item Low latency -- specialized system performance
+  \end{itemize}
 \end{frame}
 
 \begin{frame}[t]{\emph{Timely} Dataflow}
-  \vspace{0.15cm}
   \begin{center}
-    A general system to support high-level constructs using Dataflow
+    Dataflow programming primitives based on \emph{time}
   \end{center}
 
-  \vspace{0.15cm}
   \begin{itemize}
+    \setlength\itemsep{0.15cm}
     \item Structured Loops
     \item Stateful vertices
     \item Notification for vertices on iteration completion
   \end{itemize}
 
-  \only<2->{
-    \vspace{0.15cm}
-    \begin{center}
-      \includegraphics[width=0.8\textwidth]{1}
-    \end{center}
-  }
+  \vspace{0.25cm}
+  \begin{center}
+    \begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=2cm,
+      thick,main node/.style={circle,draw,font=\sffamily\Large\bfseries}]
 
+      \node[main node] (a) {A};
+      \node[main node] (b) [right of=a] {B};
+      \node[main node] (c) [right of=b] {C};
+      \node[main node] (d) [below left of=c] {D};
+      \node[main node] (e) [right of=c] {E};
+      \path[every node/.style={font=\sffamily\small}]
+      (a) edge (b) 
+      (b) edge (c) 
+      (c) edge (d) 
+      (d) edge (b)
+      (c) edge (e);
+    \end{tikzpicture}
+  \end{center}
 \end{frame}
 
 \begin{frame}[t]{Timely Dataflow - Graph Structure}
-
+  \vspace{-0.5cm}
   \begin{center}
     \includegraphics[width=0.85\textwidth]{2}
   \end{center}
 
+  \vspace{-0.5cm}
   \begin{itemize}
+    \setlength\itemsep{0.25cm}
     \item Time epoch on every input
     \item Streaming Context - Process data and pass
     \item Loop Context
     \begin{itemize}
+      \setlength\itemsep{0.15cm}
       \item Loop - Ingress (I) $\Rightarrow$ Feedback (F) $\Rightarrow$ Egress (E)
       \item Monitors progress
     \end{itemize}
@@ -149,14 +120,14 @@
   $v$.\textsc{OnNotify}($e$: Edge, $m$: Message, $t$: Timestamp) \\
 
   \vspace{0.75cm}
-  Vertices can notify others (coordination) \\
+  Vertices generate events \\
   \vspace{0.25cm}
   $this$.\textsc{SendBy}($e$: Edge, $m$: Message, $t$: Timestamp) \\
   $this$.\textsc{NotifyAt}($t$: Timestamp) \\
 
 \end{frame}
 
-\begin{frame}[t]{Timely Dataflow - Concurrency Primitives contd.}
+\begin{frame}[t]{Timely Dataflow - Concurrency Primitives}
 
   \vspace{0.5cm}
   \begin{center}
