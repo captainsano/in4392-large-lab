@@ -144,11 +144,16 @@
 
   \begin{itemize}
     \item \textsc{OnRecv} and \textsc{OnNotify} are queued, no strict ordering
-    \vspace{0.15cm}
-    \item Guarantee: \\ $v$.\textsc{OnNotify}$(t)$ is invoked only after no further invocations of
+    \vspace{0.25cm}
+    \item Notify guarantee:
+          \vspace{0.15cm}
+          \\ $v$.\textsc{OnNotify}$(t)$ is invoked only after no further invocations of
           $v$.\textsc{OnRecv}$(e,m,t')$, for $t' \leq t$
-    \vspace{0.15cm}
-    \item Constraint: \\ $v$.\textsc{SendBy}$(t')$ and $v$.\textsc{NotifyAt}$(t')$ \\
+          \vspace{0.25cm}
+    \item Backward time constraint: 
+          \vspace{0.15cm}
+          \\ Callback methods at $t$ should only call,
+          \\ \textsc{SendBy}$(t')$ and \textsc{NotifyAt}$(t')$ \\
           such that $t' \geq t$
   \end{itemize}
 
