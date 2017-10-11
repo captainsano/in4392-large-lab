@@ -6,6 +6,10 @@
   "main": "index.ts",
   "license": "MIT",
   "dependencies": {
+    "@types/body-parser": "^1.16.5",
+    "@types/cors": "^2.8.1",
+    "body-parser": "^1.18.2",
+    "cors": "^2.8.4",
     "express": "^4.16.2",
     "typescript": "^2.5.3"
   },
