@@ -7,6 +7,7 @@ import * as childProcess from 'child_process'
 import * as express from 'express'
 import * as bodyParser from 'body-parser'
 import * as cors from 'cors'
+const os = require('os');   
 
 const PORT = parseInt(process.env.PORT || '3000', 10)
 
@@ -57,6 +58,18 @@ app.post('/process', (req, res) => {
     readStream.pipe(proc.stdin)
 })
 
-app.listen(PORT, () => {
+// heartbeat
+app.get('/heartbeat', (req, res) => {
+    res.send({
+        memoryFree: os.freemem(),
+        memoryPercentage: os.freemem() / os.totalmem(),
+        cpu: os.loadavg()[0]
+    })
+})
+
+
+
+app.listen(
+    PORT, () => {
     console.log('Listening ' + PORT)
 })
