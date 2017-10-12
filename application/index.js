@@ -8,7 +8,10 @@ var childProcess = require("child_process");
 var express = require("express");
 var bodyParser = require("body-parser");
 var cors = require("cors");
+var os = require("os");
+var process = require("process");
 var PORT = parseInt(process.env.PORT || '3000', 10);
+var IMAGE_PROGRAM = process.platform.toLowerCase() === 'linux' ? 'convert' : 'magick';
 var app = express();
 app.use(cors());
 app.use(bodyParser.json());
@@ -32,11 +35,18 @@ app.post('/process', function (req, res) {
         var task = _a[0], argsVector = _a[1];
         return ["-" + task, formatArgs(task, argsVector)];
     }).reduce(function (a, b) { return a.concat(b); });
-    console.log('--- Args: ', args);
-    var proc = childProcess.spawn('magick', ['-'].concat(args, ['-']));
+    var proc = childProcess.spawn(IMAGE_PROGRAM, ['-'].concat(args, ['-']));
     res.setHeader('Content-Type', 'image/png');
     proc.stdout.pipe(res);
     readStream.pipe(proc.stdin);
+});
+// heartbeat
+app.get('/heartbeat', function (req, res) {
+    res.send({
+        memoryFree: os.freemem(),
+        memoryPercentage: os.freemem() / os.totalmem(),
+        cpu: os.loadavg()[0]
+    });
 });
 app.listen(PORT, function () {
     console.log('Listening ' + PORT);

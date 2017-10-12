@@ -11,6 +11,7 @@ import * as os from 'os'
 import * as process from 'process'
 
 const PORT = parseInt(process.env.PORT || '3000', 10)
+const IMAGE_PROGRAM = process.platform.toLowerCase() === 'linux' ? 'convert' : 'magick'
 
 const app = express()
 
@@ -50,13 +51,7 @@ app.post('/process', (req, res) => {
         return [`-${task}`, formatArgs(task, argsVector)]
     }).reduce((a, b) => a.concat(b))
 
-
-    let program = 'magick'
-    console.log('--- Args: ', args)
-    if(process.platform === 'linux') { 
-        program = 'convert'
-    }
-    const proc = childProcess.spawn(program, ['-', ...args, '-'])
+    const proc = childProcess.spawn(IMAGE_PROGRAM, ['-', ...args, '-'])
 
     res.setHeader('Content-Type', 'image/png')
     proc.stdout.pipe(res)
