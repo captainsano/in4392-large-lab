@@ -1,74 +1,12 @@
-// @TODO: Logging
-// @TODO: Health check endpoint
-import * as path from 'path'
-import * as fs from 'fs'
-import * as childProcess from 'child_process'
+import createAppServer from './lib/app-server'
+import createHealthServer from "./lib/health-server";
 
-import * as express from 'express'
-import * as bodyParser from 'body-parser'
-import * as cors from 'cors'
-import * as os from 'os'
-import * as process from 'process'
+const APP_PORT = parseInt(process.env.PORT || '3000', 10)
+const HEALTH_PORT = parseInt(process.env.PORT || '3001', 10)
 
-const PORT = parseInt(process.env.PORT || '3000', 10)
-const IMAGE_PROGRAM = process.platform.toLowerCase() === 'linux' ? 'convert' : 'magick'
+const appServer = createAppServer()
+const healthServer = createHealthServer()
 
-const app = express()
+appServer.listen(APP_PORT, () => console.log('App server listening on port ', APP_PORT))
 
-app.use(cors())
-app.use(bodyParser.json())
-
-interface MagickTaskArgsMap {
-    [key: string]: string;
-}
-
-const MAGICK_ARGS_TEMPLATE: MagickTaskArgsMap = {
-    'scale': '|$|%',
-    'rotate': '|$|',
-    'resize': '|$|x|$|!'
-}
-
-const formatArgs = function (task: string, argsVector: [string | number]): string {
-    return argsVector
-        .map((a) => a.toString())
-        .reduce((acc, a) => acc.replace('|$|', a), MAGICK_ARGS_TEMPLATE[task])
-}
-
-interface RequestBody {
-    source: string,
-    tasks: [[string, [string | number]]]
-}
-
-// @TODO: Post body validation
-// @TODO: Take input from S3
-app.post('/process', (req, res) => {
-    const {source, tasks} = req.body as RequestBody
-
-    const inputPath = path.resolve(__dirname, source)
-    const readStream = fs.createReadStream(inputPath)
-
-    const args = tasks.map(([task, argsVector]) => {
-        return [`-${task}`, formatArgs(task, argsVector)]
-    }).reduce((a, b) => a.concat(b))
-
-    const proc = childProcess.spawn(IMAGE_PROGRAM, ['-', ...args, '-'])
-
-    res.setHeader('Content-Type', 'image/png')
-    proc.stdout.pipe(res)
-    readStream.pipe(proc.stdin)
-})
-
-// heartbeat
-app.get('/heartbeat', (req, res) => {
-    res.send({
-        memoryFree: os.freemem(),
-        memoryPercentage: os.freemem() / os.totalmem(),
-        cpu: os.loadavg()[0]
-    })
-})
-
-
-
-app.listen(PORT, () => {
-    console.log('Listening ' + PORT)
-})
+healthServer.listen(HEALTH_PORT, () => console.log('Health server listening on port ', HEALTH_PORT))

@@ -1,0 +1,58 @@
+import * as express from 'express'
+import * as bodyParser from 'body-parser'
+import * as cors from 'cors'
+import * as process from 'process'
+
+import * as path from 'path'
+import * as fs from 'fs'
+import * as childProcess from 'child_process'
+
+const IMAGE_PROGRAM = process.platform.toLowerCase() === 'linux' ? 'convert' : 'magick'
+
+interface RequestBody {
+    source: string,
+    tasks: [[string, [string | number]]]
+}
+
+interface MagickTaskArgsMap {
+    [key: string]: string;
+}
+
+const MAGICK_ARGS_TEMPLATE: MagickTaskArgsMap = {
+    'scale': '|$|%',
+    'rotate': '|$|',
+    'resize': '|$|x|$|!'
+}
+
+const formatArgs = function (task: string, argsVector: [string | number]): string {
+    return argsVector
+        .map((a) => a.toString())
+        .reduce((acc, a) => acc.replace('|$|', a), MAGICK_ARGS_TEMPLATE[task])
+}
+
+export default function createAppServer() {
+
+    const app = express()
+
+    app.use(cors())
+    app.use(bodyParser.json())
+
+    app.post('/process', (req, res) => {
+        const {source, tasks} = req.body as RequestBody
+
+        const inputPath = path.resolve(__dirname, './..', source)
+        const readStream = fs.createReadStream(inputPath)
+
+        const args = tasks.map(([task, argsVector]) => {
+            return [`-${task}`, formatArgs(task, argsVector)]
+        }).reduce((a, b) => a.concat(b))
+
+        const proc = childProcess.spawn(IMAGE_PROGRAM, ['-', ...args, '-'])
+
+        res.setHeader('Content-Type', 'image/png')
+        proc.stdout.pipe(res)
+        readStream.pipe(proc.stdin)
+    })
+
+    return app
+}
