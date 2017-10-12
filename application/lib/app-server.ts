@@ -2,12 +2,12 @@ import * as express from 'express'
 import * as bodyParser from 'body-parser'
 import * as cors from 'cors'
 import * as process from 'process'
+import {Readable} from 'stream'
 
-import * as path from 'path'
-import * as fs from 'fs'
 import * as childProcess from 'child_process'
 
 const IMAGE_PROGRAM = process.platform.toLowerCase() === 'linux' ? 'convert' : 'magick'
+const NS_PER_SEC = 1e9;
 
 interface RequestBody {
     source: string,
@@ -30,8 +30,11 @@ const formatArgs = function (task: string, argsVector: [string | number]): strin
         .reduce((acc, a) => acc.replace('|$|', a), MAGICK_ARGS_TEMPLATE[task])
 }
 
-export default function createAppServer() {
+interface AppServerParams {
+    getImageStream: (source: string) => Readable,
+}
 
+export default function createAppServer({getImageStream}: AppServerParams) {
     const app = express()
 
     app.use(cors())
@@ -40,18 +43,23 @@ export default function createAppServer() {
     app.post('/process', (req, res) => {
         const {source, tasks} = req.body as RequestBody
 
-        const inputPath = path.resolve(__dirname, './..', source)
-        const readStream = fs.createReadStream(inputPath)
-
         const args = tasks.map(([task, argsVector]) => {
             return [`-${task}`, formatArgs(task, argsVector)]
         }).reduce((a, b) => a.concat(b))
 
         const proc = childProcess.spawn(IMAGE_PROGRAM, ['-', ...args, '-'])
 
-        res.setHeader('Content-Type', 'image/png')
-        proc.stdout.pipe(res)
-        readStream.pipe(proc.stdin)
+        let startTime: [number, number]
+
+        proc.stdout.on('data', () => {})
+        proc.on('exit', () => {
+            const diff = process.hrtime(startTime)
+            res.status(200).end(diff.toString())
+        })
+
+        const imageStream = getImageStream(source)
+        imageStream.on('end', () => {startTime = process.hrtime()})
+        imageStream.pipe(proc.stdin)
     })
 
     return app
