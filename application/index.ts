@@ -7,7 +7,8 @@ import * as childProcess from 'child_process'
 import * as express from 'express'
 import * as bodyParser from 'body-parser'
 import * as cors from 'cors'
-const os = require('os');   
+import * as os from 'os'
+import * as process from 'process'
 
 const PORT = parseInt(process.env.PORT || '3000', 10)
 
@@ -49,9 +50,13 @@ app.post('/process', (req, res) => {
         return [`-${task}`, formatArgs(task, argsVector)]
     }).reduce((a, b) => a.concat(b))
 
-    console.log('--- Args: ', args)
 
-    const proc = childProcess.spawn('magick', ['-', ...args, '-'])
+    let program = 'magick'
+    console.log('--- Args: ', args)
+    if(process.platform === 'linux') { 
+        program = 'convert'
+    }
+    const proc = childProcess.spawn(program, ['-', ...args, '-'])
 
     res.setHeader('Content-Type', 'image/png')
     proc.stdout.pipe(res)
