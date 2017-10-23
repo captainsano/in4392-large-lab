@@ -487,8 +487,8 @@ __pycache__/
 # By default, sensitive information, such as encrypted password
 # should be stored in the .pubxml.user file.
 
-# End of https://www.gitignore.io/api/node,linux,macos,ansible,windows,visualstudio,intellij+all,visualstudiocode
-
 ### Typescript - Ignore JS
 *.js
 **/*.js
+
+# End of https://www.gitignore.io/api/node,linux,macos,ansible,windows,visualstudio,intellij+all,visualstudiocode
