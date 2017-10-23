@@ -1,41 +1,40 @@
-\documentclass[a4paper]{article}
+\documentclass[a4paper, sigconf, twocolumn]{acmart}
 
-\usepackage{natbib}
-
-\title{
-  Large Lab Exercise \\
-  Seminar Cloud Computing (IN4392)\\
-  2017-2018
-}
-\date{}
-\author{
-  \newblock
-  B Jain \\
-  4745507 \\
-  B.Jain@student.tudelft.nl
-  \and
-  \newblock
-  K Kleeberger \\
-  4748476 \\
-  K.Kleeberger@student.tudelft.nl
-  \and
-  \newblock
-  SB Ramalingam Santhanakrishnan\\
-  S.B.RamalingamSanthanakrishnan@student.tudelft.nl \\
-  4740270
-}
+\usepackage{lipsum}
 
 \begin{document}
 
-{\raggedright{
-Parallel and Distributed Systems Group\\
-Faculty of Electrical Engineering, Mathematics and Computer Science\\
-Delft University of Technology
-}}
+% {\raggedright{
+% Parallel and Distributed Systems Group\\
+% Faculty of Electrical Engineering, Mathematics and Computer Science\\
+% Delft University of Technology
+% }}
 
-{\let\newpage\relax\maketitle}
+\begin{center}
+  \textbf{\LARGE{
+    Imagely: An elastic cloud environment for online image processing
+  }}\\
+  \vspace{0.25cm}
+  \emph{Authors}: SB Ramalingam Santhanakrishnan (4740270), \\ K Kleeberger () and B Jain ()\\
+  ICT Innovation, EEMCS, TU Delft\\
+  \emph{Emails}: \{S.B.RamalingamSanthanakrishnan, B.Jain, K.Kleeberger\}@student.tudelft.nl\\
+  \vspace{0.2cm}
+  \emph{Course Instructors}: Alexandru Iosup and Dick Epema\\
+  PDS Group, EEMCS, TU Delft\\
+  \emph{Emails}: \{A.Iosup, D.H.J.Epema\}@tudelft.nl\\
+  \vspace{0.2cm}
+  \emph{Lab Assistant}: Bogdan Ghit\\
+  PDS Group, EEMCS, TU Delft\\
+  \emph{Email}: B.I.Ghit@tudelft.nl\\
+\end{center}
 
-\abstract{}
+\vspace{0.2cm}
+
+\textbf{
+  \emph{Abstract}---In this report we introduce \emph{Imagely}, a cloud service for image processing.
+  It runs on top of Amazon Web Services compute resources to provide elastic scaling capabilities and
+  we show that it can achieve a speedup of upto x.xx at peak load, compared to baseline performance.
+}
 
 \section{Introduction}
 
