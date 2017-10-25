@@ -1,32 +1,18 @@
-import * as express from 'express'
-import * as bodyParser from 'body-parser'
 import * as redux from 'redux'
 
-import taskQueue, {addTask} from './lib/task-queue'
+import taskQueue, {State} from './lib/task-queue'
+import createAppServer from './lib/app-server'
 
-const PORT = parseInt(process.env.PORT || '8000', 10)
+const APP_PORT = parseInt(process.env.PORT || '8000', 10)
 
 const store = redux.createStore(taskQueue)
 
-const createAppServer = function() {
-    const server = express()
+if (store) {
+    const appServer = createAppServer(store as redux.Store<State>)
 
-    server.use(bodyParser.json())
-
-    server.post('/add', (req, res) => {
-        store.dispatch(addTask(req.body))
-        res.status(200).end('added task')
+    appServer.listen(APP_PORT, () => {
+        console.log('App server listening on port: ', APP_PORT)
     })
-
-    server.get('/state', (req, res) => {
-        res.status(200).end(JSON.stringify(store.getState()))
-    })
-
-    return server
 }
 
-const appServer = createAppServer()
 
-appServer.listen(PORT, () => {
-    console.log('App server listening on port: ', PORT)
-})

@@ -2,21 +2,22 @@ import * as moment from 'moment'
 import * as R from 'ramda'
 import * as uuid from 'uuid/v4'
 
-interface Task {
+export interface Task {
     id: string
     args?: {}
     arrivalTime?: moment.Moment,
     executeStartTime?: moment.Moment,
     finishTime?: moment.Moment,
+    retries?: number,
     instanceId?: string
 }
 
-interface Action {
+export interface Action {
     type: 'ADD_TASK' | 'EXECUTE_TASK' | 'FINISH_TASK' | 'FAIL_TASK',
     payload: Task
 }
 
-interface State {
+export interface State {
     startTime: moment.Moment,
     queue: {
         pending: {[id: string]: Task},
