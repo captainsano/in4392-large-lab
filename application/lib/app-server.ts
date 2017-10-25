@@ -1,10 +1,9 @@
 import * as express from 'express'
 import * as bodyParser from 'body-parser'
-import * as cors from 'cors'
 import * as process from 'process'
-import {Readable} from 'stream'
 
 import * as childProcess from 'child_process'
+import {Readable} from "stream";
 
 const IMAGE_PROGRAM = process.platform.toLowerCase() === 'linux' ? 'convert' : 'magick'
 const NS_PER_SEC = 1e9;
@@ -31,35 +30,41 @@ const formatArgs = function (task: string, argsVector: [string | number]): strin
 }
 
 interface AppServerParams {
-    getImageStream: (source: string) => Readable,
+    getImage: (source: string) => Promise<Readable>,
 }
 
-export default function createAppServer({getImageStream}: AppServerParams) {
+export default function createAppServer({getImage}: AppServerParams) {
     const app = express()
 
-    app.use(cors())
     app.use(bodyParser.json())
 
     app.post('/process', (req, res) => {
+        const startTime = process.hrtime()
+
         const {source, tasks} = req.body as RequestBody
 
         const args = tasks.map(([task, argsVector]) => {
             return [`-${task}`, formatArgs(task, argsVector)]
         }).reduce((a, b) => a.concat(b))
 
-        const proc = childProcess.spawn(IMAGE_PROGRAM, ['-', ...args, '-'])
+        const proc = childProcess.spawn(IMAGE_PROGRAM, ['-', ...args, '-quality', '100', 'jpeg:-'])
 
-        let startTime: [number, number]
-
-        proc.stdout.on('data', () => {})
-        proc.on('exit', () => {
-            const diff = process.hrtime(startTime)
-            res.status(200).end(diff.toString())
+        proc.stdout.on('data', () => {
+            // Mock reader, otherwise stdout is never drained
         })
 
-        const imageStream = getImageStream(source)
-        imageStream.on('end', () => {startTime = process.hrtime()})
-        imageStream.pipe(proc.stdin)
+        // proc.stdout.pipe(res)
+
+        proc.on('exit', () => {
+            const diff = process.hrtime(startTime)
+            // console.log('---> ', diff)
+            res.json(diff)
+        })
+
+        getImage(source).then((data) => {
+            // res.set('Content-Type', 'image/jpeg')
+            data.pipe(proc.stdin)
+        })
     })
 
     return app
