@@ -1,6 +1,7 @@
 import * as moment from 'moment'
 import * as R from 'ramda'
 import * as uuid from 'uuid/v4'
+import {Action} from 'redux';
 
 export interface Task {
     id: string
@@ -12,12 +13,12 @@ export interface Task {
     instanceId?: string
 }
 
-export interface Action {
+export interface TaskQueueAction extends Action {
     type: 'ADD_TASK' | 'EXECUTE_TASK' | 'FINISH_TASK' | 'FAIL_TASK',
     payload: Task
 }
 
-export interface State {
+export interface TaskQueueState {
     startTime: moment.Moment,
     queue: {
         pending: {[id: string]: Task},
@@ -26,7 +27,7 @@ export interface State {
     }
 }
 
-const INIT_STATE: State = {
+const INIT_STATE: TaskQueueState = {
     startTime: moment(),
     queue: {
         pending: {},
@@ -36,7 +37,7 @@ const INIT_STATE: State = {
 }
 
 // Reducer
-export default function taskQueue(state = INIT_STATE, {type, payload}: Action): State {
+export default function taskQueue(state = INIT_STATE, {type, payload}: TaskQueueAction): TaskQueueState {
     switch (type) {
         case 'ADD_TASK': {
             return R.assocPath(
@@ -53,14 +54,14 @@ export default function taskQueue(state = INIT_STATE, {type, payload}: Action): 
 
 // Helper functions for task creation
 
-export function addTask(args: {}): Action {
+export function addTask(args: {}): TaskQueueAction {
     return {
         type: 'ADD_TASK',
         payload: {id: uuid(), args, arrivalTime: moment()}
     }
 }
 
-export function executeTask(id: string): Action {
+export function executeTask(id: string): TaskQueueAction {
     return {
         type: 'EXECUTE_TASK',
         payload: {

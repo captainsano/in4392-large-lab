@@ -2,9 +2,9 @@ import * as express from 'express'
 import * as bodyParser from 'body-parser'
 import * as redux from 'redux'
 
-import {addTask, State} from './task-queue'
+import {addTask, TaskQueueState} from './task-queue'
 
-export default function createAppServer(store: redux.Store<State>) {
+export default function createAppServer(store: redux.Store<TaskQueueState>) {
     const server = express()
 
     server.use(bodyParser.json())
