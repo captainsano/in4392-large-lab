@@ -1,36 +1,32 @@
-import * as AWS from 'aws-sdk'
 import * as express from 'express'
-import * as R from 'ramda'
+import * as bodyParser from 'body-parser'
 import * as redux from 'redux'
 
-import counter from './lib/counter'
+import taskQueue, {addTask} from './lib/task-queue'
 
 const PORT = parseInt(process.env.PORT || '8000', 10)
 
-const store = redux.createStore(counter)
+const store = redux.createStore(taskQueue)
 
-const createCounterServer = function() {
-    const counterServer = express()
+const createAppServer = function() {
+    const server = express()
 
-    counterServer.get('/increment', (req, res) => {
-        store.dispatch({type: 'INCREMENT'})
-        res.status(200).end('incremented')
+    server.use(bodyParser.json())
+
+    server.post('/add', (req, res) => {
+        store.dispatch(addTask(req.body))
+        res.status(200).end('added task')
     })
 
-    counterServer.get('/decrement', (req, res) => {
-        store.dispatch({type: 'DECREMENT'})
-        res.status(200).end('decremented')
-    })
-
-    counterServer.get('/state', (req, res) => {
+    server.get('/state', (req, res) => {
         res.status(200).end(JSON.stringify(store.getState()))
     })
 
-    return counterServer
+    return server
 }
 
-const counterServer = createCounterServer()
+const appServer = createAppServer()
 
-counterServer.listen(PORT, () => {
-    console.log('Counter server listening on port: ', PORT)
+appServer.listen(PORT, () => {
+    console.log('App server listening on port: ', PORT)
 })
