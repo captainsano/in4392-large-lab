@@ -1,15 +1,12 @@
-import * as moment from 'moment'
 import * as R from 'ramda'
+import * as moment from 'moment'
 import * as uuid from 'uuid/v4'
 
 import {Task, TaskQueueAction, TaskQueueState} from './types'
 
 const INIT_STATE: TaskQueueState = {
-    startTime: moment(),
-    queue: {
-        pending: {},
-        active: {}
-    }
+    pending: {},
+    active: {}
 }
 
 // Reducer
@@ -17,10 +14,22 @@ export default function taskQueue(state = INIT_STATE, {type, payload}: TaskQueue
     switch (type) {
         case 'ADD_TASK': {
             return R.assocPath(
-                ['queue', 'pending', payload.id],
-                R.dissoc('id', payload),
-                state
-            )
+                ['pending', payload.id],
+                R.dissoc('id', payload)
+            )(state) as TaskQueueState
+        }
+
+        case 'EXECUTE_TASK': {
+            return R.compose(
+                R.assocPath(['active', payload.id], R.dissoc('id', payload)),
+                R.dissocPath(['pending', payload.id])
+            )(state) as TaskQueueState
+        }
+
+        case 'FINISH_TASK': {
+            return R.dissocPath(
+                ['active', payload.id]
+            )(state) as TaskQueueState
         }
 
         default:
@@ -28,7 +37,7 @@ export default function taskQueue(state = INIT_STATE, {type, payload}: TaskQueue
     }
 }
 
-// Helper functions for action handling
+// Action creators
 export function addTask(args: {}): TaskQueueAction {
     return {
         type: 'ADD_TASK',
@@ -61,4 +70,17 @@ export function finishTask(task: Task): TaskQueueAction {
             finishTime: moment()
         }
     }
+}
+
+// Util functions
+export function pickPendingTasks(state: TaskQueueState, count: number): Task[] {
+    const taskPairs = R.toPairs(state.pending)
+
+    const earliestArrivedTasks = R.compose(
+        R.take(count),
+        R.sortWith([R.ascend((t: Task) => t.arrivalTime.valueOf())]),
+        R.map(([id, task]) => ({...task, id}))
+    )(taskPairs)
+
+    return earliestArrivedTasks as Task[]
 }

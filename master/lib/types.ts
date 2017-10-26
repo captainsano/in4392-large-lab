@@ -12,14 +12,11 @@ export interface Task {
 }
 
 export interface TaskQueueAction extends Action {
-    type: 'ADD_TASK' | 'EXECUTE_TASK' | 'FINISH_TASK',
+    type: 'ADD_TASK' | 'EXECUTE_TASK' | 'FINISH_TASK' | 'FAIL_TASK',
     payload: Task
 }
 
 export interface TaskQueueState {
-    startTime: Moment,
-    queue: {
-        pending: { [id: string]: Task },
-        active: { [id: string]: Task }
-    }
+    pending: { [id: string]: Task },
+    active: { [id: string]: Task }
 }
