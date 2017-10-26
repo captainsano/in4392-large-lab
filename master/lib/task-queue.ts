@@ -1,38 +1,14 @@
 import * as moment from 'moment'
 import * as R from 'ramda'
 import * as uuid from 'uuid/v4'
-import {Action} from 'redux';
 
-export interface Task {
-    id: string
-    args?: {}
-    arrivalTime?: moment.Moment,
-    executeStartTime?: moment.Moment,
-    finishTime?: moment.Moment,
-    retries?: number,
-    instanceId?: string
-}
-
-export interface TaskQueueAction extends Action {
-    type: 'ADD_TASK' | 'EXECUTE_TASK' | 'FINISH_TASK' | 'FAIL_TASK',
-    payload: Task
-}
-
-export interface TaskQueueState {
-    startTime: moment.Moment,
-    queue: {
-        pending: {[id: string]: Task},
-        active: {[id: string]: Task},
-        finished: {[id: string]: Task}
-    }
-}
+import {Task, TaskQueueAction, TaskQueueState} from './types'
 
 const INIT_STATE: TaskQueueState = {
     startTime: moment(),
     queue: {
         pending: {},
-        active: {},
-        finished: {}
+        active: {}
     }
 }
 
@@ -52,21 +28,37 @@ export default function taskQueue(state = INIT_STATE, {type, payload}: TaskQueue
     }
 }
 
-// Helper functions for task creation
-
+// Helper functions for action handling
 export function addTask(args: {}): TaskQueueAction {
     return {
         type: 'ADD_TASK',
-        payload: {id: uuid(), args, arrivalTime: moment()}
+        payload: {
+            id: uuid(),
+            args,
+            arrivalTime: moment(),
+            retries: -1
+        }
     }
 }
 
-export function executeTask(id: string): TaskQueueAction {
+export function executeTask(task: Task, instanceId: string): TaskQueueAction {
     return {
         type: 'EXECUTE_TASK',
         payload: {
-            id,
-            executeStartTime: moment()
+            ...task,
+            executeStartTime: moment(),
+            retries: task.retries + 1,
+            instanceId
+        }
+    }
+}
+
+export function finishTask(task: Task): TaskQueueAction {
+    return {
+        type: 'FINISH_TASK',
+        payload: {
+            ...task,
+            finishTime: moment()
         }
     }
 }

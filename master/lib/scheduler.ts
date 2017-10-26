@@ -2,7 +2,7 @@ import {Store} from 'redux'
 import {ActionsObservable} from 'redux-observable'
 import {Observable} from 'rxjs/Observable'
 
-import {TaskQueueAction, TaskQueueState} from './task-queue'
+import {TaskQueueAction, TaskQueueState} from './types'
 
 const SCHEDULER_INTERVAL = 5000
 const SCHEDULER_DEBOUNCE = 1000
