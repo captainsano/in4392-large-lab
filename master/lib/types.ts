@@ -29,6 +29,11 @@ export interface Instance {
     normalTermination?: boolean
 }
 
+export interface InstanceRequestAction extends Action {
+    type: 'REQUEST_INSTANCES',
+    payload: {count: number}
+}
+
 export interface InstanceAction extends Action {
     type: 'START_INSTANCE' | 'RUN_INSTANCE' | 'TERMINATE_INSTANCE',
     payload: Instance
@@ -37,4 +42,15 @@ export interface InstanceAction extends Action {
 export interface InstanceState {
     starting: { [id: string]: Instance },
     running: { [id: string]: Instance }
+}
+
+export interface MasterState {
+    taskQueue: TaskQueueState,
+    instances: InstanceState
+}
+
+export interface ProvisionerPolicy {
+    taskQueueThreshold: number,
+    minVMs: number,
+    maxVMs: number
 }

@@ -1,17 +1,25 @@
 import 'rxjs'
-import {createStore, combineReducers, applyMiddleware} from 'redux'
-import {createEpicMiddleware, combineEpics} from 'redux-observable'
+import {createStore, combineReducers, applyMiddleware, Action} from 'redux'
+import {createEpicMiddleware, combineEpics, ActionsObservable} from 'redux-observable'
+import * as moment from 'moment'
 
-import {TaskQueueState} from './lib/types'
+import {MasterState, TaskQueueState} from './lib/types'
 
 import taskQueue, {addTask} from './lib/task-queue'
 import createAppServer from './lib/app-server'
 import createScheduler from './lib/scheduler'
-import instances from './lib/instances'
+import instances, {runInstance, startInstance} from './lib/instances'
 
 const APP_PORT = parseInt(process.env.PORT || '8000', 10)
 
-const rootEpic = combineEpics(createScheduler())
+const loggerEpic = function (action$: ActionsObservable<Action>) {
+    return action$
+        .filter((a: Action) => a.type !== 'NULL')
+        .do((a: Action) => console.log('----> ', a.type, '%%%% \n', a, '\n-----'))
+        .mapTo({type: 'NULL'})
+}
+
+const rootEpic = combineEpics(createScheduler(), loggerEpic)
 const epicMiddleware = createEpicMiddleware(rootEpic)
 
 const rootReducer = combineReducers({
@@ -23,7 +31,7 @@ const store = createStore(rootReducer, applyMiddleware(epicMiddleware))
 
 if (store) {
     const appServer = createAppServer({
-        getState: () => store.getState() as TaskQueueState,
+        getState: () => store.getState() as MasterState,
         addTask: (args) => store.dispatch(addTask(args))
     })
 

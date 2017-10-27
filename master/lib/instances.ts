@@ -1,5 +1,5 @@
 import * as R from 'ramda'
-import {Instance, InstanceAction, InstanceState} from './types'
+import {Instance, InstanceAction, InstanceRequestAction, InstanceState} from './types'
 
 const INIT_STATE: InstanceState = {
     starting: {},
@@ -33,6 +33,13 @@ export default function instances(state = INIT_STATE, {type, payload}: InstanceA
 }
 
 // Action creators
+export function requestInstances(count = 1): InstanceRequestAction {
+    return {
+        type: 'REQUEST_INSTANCES',
+        payload: {count}
+    }
+}
+
 export function startInstance(instance: Instance): InstanceAction {
     return {
         type: 'START_INSTANCE',
