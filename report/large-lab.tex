@@ -1,4 +1,4 @@
-\documentclass[a4paper, sigconf, twocolumn]{acmart}
+\documentclass[a4paper]{IEEEtran}
 
 \usepackage{lipsum}
 
@@ -15,13 +15,13 @@
     Imagely: An elastic cloud environment for online image processing
   }}\\
   \vspace{0.25cm}
-  \emph{Authors}: SB Ramalingam Santhanakrishnan (4740270), \\ K Kleeberger () and B Jain ()\\
+  \emph{Authors}: SB Ramalingam Santhanakrishnan (4740270), \\ K Kleeberger (???) and B Jain (???)\\
   ICT Innovation, EEMCS, TU Delft\\
   \emph{Emails}: \{S.B.RamalingamSanthanakrishnan, B.Jain, K.Kleeberger\}@student.tudelft.nl\\
   \vspace{0.2cm}
-  \emph{Course Instructors}: Alexandru Iosup and Dick Epema\\
+  \emph{Course Instructors}: DHJ Epema, A Iosup and A Kuzmanovska\\
   PDS Group, EEMCS, TU Delft\\
-  \emph{Emails}: \{A.Iosup, D.H.J.Epema\}@tudelft.nl\\
+  \emph{Emails}: \{D.H.J.Epema, A.Iosup, A.Kuzmanovska\}@tudelft.nl\\
   \vspace{0.2cm}
   \emph{Lab Assistant}: Bogdan Ghit\\
   PDS Group, EEMCS, TU Delft\\
@@ -31,31 +31,136 @@
 \vspace{0.2cm}
 
 \textbf{
-  \emph{Abstract}---In this report we introduce \emph{Imagely}, a cloud service for image processing.
-  It runs on top of Amazon Web Services compute resources to provide elastic scaling capabilities and
-  we show that it can achieve a speedup of upto x.xx at peak load, compared to baseline performance.
+  \emph{Abstract}---In this report we introduce \emph{Imagely}, a cloud service for image processing. It runs on top of Amazon Web Services' barebone compute resources to provide elastic scaling capabilities and through benchmarks and experiments, we show that it can achieve a speedup of up to ?? at peak load, compared to the baseline performance of a static single compute resource. (TODO: Add more points on design and analysis)
 }
 
 \section{Introduction}
 
-\section{Application}
+WantCloud BV is an image processing company and are pioneers in processing raw satellite images to a standard image formats, consumable by the end-user on the web browser. As WantCloud BV is expanding into other domains and 
+adding new customers rapidly, their existing solution is not able to cope up with peak traffic demands and
+ maintain the service level agreements (SLAs). Thus, WantCloud BV is evaluating a IaaS-based solution that
+  can scale with the demand.
 
-The application which we build is a web-based image manipulator which
-supports basic operations on the given image(s) such as crop, border, 
-frame, trim, chop, draw, annotate, resize, scale, magnify, etc. 
-A sequence of operations on the same image can be specified in a single
-request. We use the ImageMagick\cite{imagemagick} application for the
-aforementioned operations and wrap it with a thin NodeJS\cite{nodejs} web server.
+The proposed system utilizes Amazon Web Services (AWS)~\cite{aws} IaaS cloud service provider's compute instance, EC2.
+AWS provides low-level SDKs for provisioning and revoking virtual machines (VMs) on which we place 
+the workloads. We also utilize Amazon Machine Images (AMIs) for pre-packaging the application code,
+configuration information and the operating system for the virtual machine. For image processing and conversion, we use the ImageMagick~\cite{imagemagick} program. We wrap ImageMagick with a thin HTTP server written in NodeJS~\cite{nodejs}, which invokes ImageMagick as a child process and uses stdin/stdout pipes for input/output. The VM which performs image processing is known as
+the worker node. For analysis purposes, we restrict the scope of worker to scaling down, rotating and converting the
+image from TIFF~\cite{rfc3302} to JPEG format~\cite{jpeg}.
 
-\section{System Design}
+The proposed solution consists of a master node, which accepts the image processing task requests via HTTP and
+spawns multiple workers as per the policy, balances and allocates tasks them and also monitors the overall 
+system statistics. The total time it takes to perform tasks on an image by the worker is known as the \emph{makespan} of a given job. VMs are leased on an hourly basis, thus we also measure the cost for a given job and analyse the 
+tradeoffs in adding more VMs to the system.
+
+To determine a baseline, we run a test workload on a single VM and to analyse the scaling capability of the system,
+we run workloads with varied arrival time distributions to simulate realistic scenarios.
+
+In section~\ref{application}, additional background information on the application is provided. In section~\ref{system_design} we illustrate the design of the system with focus on specific aspects pertaining to
+WantCloud's requirements and in section~\ref{experiments} we present the experiments conducted along with the
+results and analysis. We conclude the report in section~ref{conclusion} with a short discussion on the findings
+and potential improvements.
+
+\section{Application} \label{application}
+
+The web-based application which we build takes jobs defined in JSON format~\cite{rfc7159}, which point to a image URL and defines
+a sequence of basic image manipulation operations such as scaling, rotation and finally file format conversion from
+TIFF to JPEG.  We internally use the ImageMagick program for processing the image and it is invoked by a NodeJS web
+server. The end-user requests reach the master node, which queues the job, picks an idle VM and allocates the job
+to it, based on the allocation policy. In case an idle VM is not found, the provisioning policy guides the master
+to provision a new VM and add it to the worker pool.
+
+\subsection{Requirements}
+
+In order to replace WantCloud's current system, the following requirements are to be met by the new system.
+
+\begin{itemize}
+  \item \emph{Automation}: The system should be automated for creation, provisioning and other activities
+  with minimal human intervention.
+  \item \emph{Auto-scaling}: The system should be able to detect fluctuations in demand and scale up or down the VM resource pool automatically.
+  \item \emph{Load Balancing}: The system should be able to best utilize the available pool of compute resources
+  for the workload through allocation policies.
+  \item \emph{Reliability}: The system should be able to retry failed tasks, ensure availability through redundancy and recover from unexpected failures.
+  \item \emph{Monitoring}: The system should be able to keep track of resource usage and provide information
+  on metrics to aid future decisions.
+\end{itemize}
+
+\section{System Design} \label{system_design}
+
+At a high level, the system follows a simple client-server model where end-users send job requests to the server
+in JSON, specifying the image source and the manipulations to be performed. The server accepts the requests, creates
+a job and adds it to the pending job queue. The job is then dispatched by the scheduler to an available worker at a later point in time. The workers finish the job and intimate the end-user via E-mail about the job completion and 
+where the result could be found, simultaneously informing the master about the job completion and awaiting the next job.
+
+\subsection{Overview}
+
+ The server consists of the following components:
+
+ \begin{itemize}
+   \item \emph{Listener}: The NodeJS server, which accepts client requests through HTTP, parses it, creates a 
+   corresponding internal job representation and adds it to the pending job queue.
+   \item \emph{Scheduler}: The scheduler looks for a free VM in the resource pool and schedules a pending job
+   onto the identified VM according to the given job allocation policy.
+   \item \emph{PoolManager}: This component which manages the provisioning and revocation of VMs in the resource 
+   pool according to the given scaling policy.
+   \item \emph{Monitor}: The monitor is responsible for monitoring the finished/failed jobs, health of the instances
+    and maintain record, which is served at a HTTP endpoint, summarized for metrics.
+ \end{itemize}
+
+The implementation of the scheduler and the pool manager is generic such that it is trivial to port it to other 
+cloud providers by interfacing with the corresponding SDKs or APIs. The various policies are also defined in JSON
+format and the system is extensible such that the policies can be dynamically swapped through HTTP endpoints.
 
 \subsection{Resource Management Architecture}
+
+The system comprises of the following concepts:
+
+\begin{enumerate}
+  \item \emph{Job}: As soon as the job moves from the pending queue to the active queue, it is submitted to the worker, which performs the following three steps,
+  \begin{enumerate}
+    \item Downloading the source image.
+    \item Execution of image manipulation and conversion.
+    \item Writing the output image to data store.
+  \end{enumerate} 
+  The above steps, in addition to the time taken in submitting and receiving the completion notification by master
+  is counted into the job's makespan. When the job is marked as finished, it is removed from the active queue
+  and reporting information such as the finishTime and the ID of the instance which performed the job is recorded
+  and stored by the monitor module. In case a job fails or does not finish within the given timeout period, the 
+  job is again added to the pending queue with an incremented retry count, which has a policy-defined upper limit.
+
+  \item \emph{Worker Nodes}: In AWS, after a request for a new VM instance is made, it enters the \textsc{PENDING}
+  state and it is usable only when it reaches the \textsc{RUNNING} state. However, at the running state, additional
+  setup needs to be performed in order to start executing our business logic, at which point the VM is said to be
+  completely ready and usable. We reduce the time required for the VM to be ready by booting using pre-defined
+  VM images, provided as a service by AWS, AMI~\cite{aws-ami}. The worker application implements a health check
+  endpoint, which returns the cpu and memory stats. The successful response of this endpoint indicates that the
+  worker is ready to accept job requests.
+
+  The master node, asynchronously requests for a new worker instance and polls the health check endpoint of
+  the VM until it responds, to determine its readiness. Once the worker is ready, it is added to the worker resource
+  pool. If the worker is not able to reach the ready state within 1 minute, it is terminated.
+
+  \item \emph{Scheduling}: The scheduler is invoked periodically to perform the following tasks,
+  \begin{enumerate}
+    \item Count the available worker instances.
+    \item Pick as many jobs from the pending queue as there are worker instances (this could be lesser), 
+    prioritized by earliest arrival time and retry count.
+    \item If there are lesser jobs than workers, mark the surplus workers for termination, otherwise, request
+    provisioner for an additional worker.
+    \item Move matched jobs to active queue, asynchronously send job request to workers and monitor for completion.
+    \item When a job completion notification is received, move the job out of the active queue and let monitor record the event. If a job fails, it is added back to the execution queue with incremented retry count.
+  \end{enumerate}
+
+  Note that the scheduler incrementally requests for new instances to be provisioned at each scheduling round. Also,
+  the additional instances are not terminated until the next round by the provisioner, in case they are required
+  again by the system.
+\end{enumerate}
 
 \subsection{System Policies}
 
 \subsection{Additional System Features [OPTIONAL]}
 
-\section{Experimental Results}
+\section{Experimental Results} \label{experiments}
 
 \subsection{Experimental Setup}
 
@@ -68,7 +173,7 @@ aforementioned operations and wrap it with a thin NodeJS\cite{nodejs} web server
   \item{\emph{Usage metrics of the experiment (OPTIONAL)}: }
 \end{enumerate}
 
-\section{Conclusion}
+\section{Conclusion} \label{conclusion}
 
 \bibliographystyle{unsrt}
 \bibliography{large-lab}
