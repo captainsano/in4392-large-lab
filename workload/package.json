@@ -1,0 +1,13 @@
+{
+  "name": "worklaod",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "request": "^2.83.0",
+    "request-promise-native": "^1.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "^8.0.47"
+  }
+}
