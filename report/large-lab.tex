@@ -4,28 +4,29 @@
 
 \begin{document}
 
-% {\raggedright{
-% Parallel and Distributed Systems Group\\
-% Faculty of Electrical Engineering, Mathematics and Computer Science\\
-% Delft University of Technology
-% }}
+\setlength{\tabcolsep}{16pt}
+\renewcommand{\arraystretch}{1.25}
 
 \begin{center}
-  \textbf{\LARGE{
-    Imagely: An elastic cloud environment for online image processing
+  \textbf{\Large{
+    Imagely: A cloud environment for online image processing
   }}\\
   \vspace{0.25cm}
-  \emph{Authors}: SB Ramalingam Santhanakrishnan (4740270), \\ K Kleeberger (???) and B Jain (???)\\
+  \emph{Authors}: SB~Ramalingam Santhanakrishnan (4740270), \\ K~Kleeberger (???) and B~Jain (???)\\
   ICT Innovation, EEMCS, TU Delft\\
-  \emph{Emails}: \{S.B.RamalingamSanthanakrishnan, B.Jain, K.Kleeberger\}@student.tudelft.nl\\
+  \emph{Emails}: \{S.B.RamalingamSanthanakrishnan, K.Kleeberger, B.Jain\}@student.tudelft.nl\\
   \vspace{0.2cm}
-  \emph{Course Instructors}: DHJ Epema, A Iosup and A Kuzmanovska\\
+  \emph{Course Instructors}: DHJ~Epema, A~Iosup and A~Kuzmanovska\\
   PDS Group, EEMCS, TU Delft\\
   \emph{Emails}: \{D.H.J.Epema, A.Iosup, A.Kuzmanovska\}@tudelft.nl\\
   \vspace{0.2cm}
-  \emph{Lab Assistant}: Bogdan Ghit\\
+  \emph{Lab Assistant}: BI~Ghit\\
   PDS Group, EEMCS, TU Delft\\
   \emph{Email}: B.I.Ghit@tudelft.nl\\
+  \vspace{0.2cm}
+  \emph{Teaching Assistant}: A~Parthasarathy\\
+  EEMCS, TU Delft\\
+  \emph{Email}: A.Parthasarathy@student.tudelft.nl\\
 \end{center}
 
 \vspace{0.2cm}
@@ -113,7 +114,7 @@ format and the system is extensible such that the policies can be dynamically sw
 
 \subsection{Resource Management Architecture}
 
-The system comprises of the following concepts:
+The system comprises of the following concepts which interact to achieve efficient resource management:
 
 \begin{enumerate}
   \item \emph{Job}: As soon as the job moves from the pending queue to the active queue, it is submitted to the worker, which performs the following three steps,
@@ -140,7 +141,7 @@ The system comprises of the following concepts:
   the VM until it responds, to determine its readiness. Once the worker is ready, it is added to the worker resource
   pool. If the worker is not able to reach the ready state within 1 minute, it is terminated.
 
-  \item \emph{Scheduling}: The scheduler is invoked periodically to perform the following tasks,
+  \item \emph{Scheduling}: \label{scheduling} The scheduler is invoked periodically to perform the following tasks,
   \begin{enumerate}
     \item Count the available worker instances.
     \item Pick as many jobs from the pending queue as there are worker instances (this could be lesser), 
@@ -151,27 +152,94 @@ The system comprises of the following concepts:
     \item When a job completion notification is received, move the job out of the active queue and let monitor record the event. If a job fails, it is added back to the execution queue with incremented retry count.
   \end{enumerate}
 
-  Note that the scheduler incrementally requests for new instances to be provisioned at each scheduling round. Also,
-  the additional instances are not terminated until the next round by the provisioner, in case they are required
-  again by the system.
+  Note that the scheduler incrementally requests for new instances at each round. Also,
+  the additional instances are not terminated until the next round by the provisioner, in case they are required again by the system. This avoid thrashing of VM provisioning activity.
+
+  \item \emph{Reliability}: As mentioned in the previous point, scheduling already takes care of 
+  retrying failed tasks. As far as the master node is concerned, the entire system state, including
+  the statistic is held in a global immutable container, which can be easily checkpointed. Although
+  we have not done it for feasibility reasons, the master itself could be replicated and deployed
+  in different availability zones and the traffic could be evenly distributed.
 \end{enumerate}
 
 \subsection{System Policies}
 
-\subsection{Additional System Features [OPTIONAL]}
+In the system, we have implemented one allocation policy and two provisioning policies.
+
+\begin{enumerate}
+  \item \emph{Allocation}: The scheduler implements the first come, first serve (FCFS) policy.
+  It picks the job with the earliest arrival time and maximum retry count for allocation.
+
+  \item \emph{Provisioning}: Provisioning policies fall under two classes, \textsc{Static} and \textsc{Dynamic}. We implement the \textsc{Constant-5} static policy where the entire workload
+  is handled by a constant number of workers (count 5) and under the dynamic class, we implement
+  \textsc{On-Demand Single VM (OD-S)}, which allocates one VM per job and releases the VM after job completion plus a wait time (10 seconds in our case).
+
+  The configurable parameters of the OD-S policy are,
+    \begin{itemize}
+      \item \emph{min-vms}: The minimum number of VMs the system must have at any point.
+      \item \emph{max-vms}: The total number of VMs the system can provision at most.
+      \item \emph{threshold}: The trigger value for provisioning activity, in pending queue length.
+    \end{itemize} 
+
+  When the pending queue length falls below the threshold, the scheduler marks instances to be
+  terminated and the provisioner executes the termination after the wait period.
+\end{enumerate}
 
 \section{Experimental Results} \label{experiments}
 
+We perform all the experiments on the AWS cloud platform, restricted to a single region North Virgina (US-East-1) with default availability zone and the default virtual private cloud settings.
+A custom security group is used for exposing ports 8000 (master server), 3000 (worker server) and 3001 (worker health check) for inbound TCP (HTTP) traffic.
+
 \subsection{Experimental Setup}
+
+ We have extended our custom AMI from the base public Ubuntu image provided by Amazon (id = ami-cd0f5cb6). Workloads have been created from the publicly available image files of NASA's 
+ Landsat-I satellite (x images, total y MB). The workloads are varied by arrival time distribution in order to evaluate the provisioning policies. Each job in the workload requests the given image
+ to be scaled down to 25\% of the original size, rotated by 90 degrees clockwise and converted to
+  JPEG. We generate and send the workloads to the system using custom scripts. The instance type 
+  we use for both master and worker is m3.medium (general purpose compute, vcpu=1 and memory=3.75Gb).
 
 \subsection{Experiments}
 
-\begin{enumerate}
-  \item{\emph{Charged-time}: }
-  \item{\emph{Charged-cost}: }
-  \item{\emph{Service metrics of the experiment}: }
-  \item{\emph{Usage metrics of the experiment (OPTIONAL)}: }
-\end{enumerate}
+The goal of our experiments is to measure various workload execution and VM metrics on running the
+ static policy and the dynamic policies and analyse the results to understand the inherent
+ tradeoffs in the elasticity of cloud environments. \footnote{TODO: for each experiment, list
+  \emph{Charged-time}, \emph{Charged-cost} and \emph{Service metrics of the experiment}
+}
+ 
+\subsubsection{Baseline}
+
+We determine the makespan of the three workloads on a single unit (SU) instance to analyze 
+the relative speedups and cost-tradeoff in later experiments.
+
+\subsubsection{Overheads}
+
+We identify a major overhead in the system due to the time taken for a newly launched VM to 
+reach the ready state. To measure this, we repeatedly request, wait till ready and release a 
+single VM instance for 25 times.
+
+\subsubsection{Provisioning Policy}
+
+We exercise three workload variants, linear, bursty and poisson across the three allocation policies,
+
+\begin{itemize}
+  \item \textsc{CONSTANT-5}, constantly 5 VMs.
+  \item \textsc{OD-S-0}, threshold set to 0, 2 to 20 VMs.
+  \item \textsc{OD-S-5}, threshold set to 5, 2 to 20 VMs.
+\end{itemize}
+
+\subsubsection{Utilization}
+
+Utilization is the ratio of the total time spent by the workers in executing the jobs to the
+total lifetime (including boot time) of the workers, described by equation~\ref{eq:utilization}.
+
+\begin{equation} \label{eq:utilization}
+  Utilization = \frac{\sum T_{execution}}{\sum T_{lifetime}}
+\end{equation}
+
+\subsubsection{Speedup vs Cost Tradeoff}
+
+We summarize the results obtained from the previous experiments and compare the cost and speedup
+of the policies on the workloads.
 
 \section{Conclusion} \label{conclusion}
 
@@ -180,24 +248,40 @@ The system comprises of the following concepts:
 
 \section*{Appendix A: Time Sheets}
 
-[TODO: Restructure this section onto a table]
+\begin{table}[htbp]
+  \centering
+  \caption{Time spent on the project per activity.}
+  \begin{tabular}{| l | r | r |}
+    \hline
+    Activity & Time (hours) \\
+    \hline
+    Total & \\
+    Think & \\
+    Dev & \\
+    XP & \\
+    Analysis & \\
+    Write & \\
+    Wasted & \\
+    \hline
+  \end{tabular}
+\end{table}
 
-\textbf{Project:}
-\begin{enumerate}
-  \item{\emph{Total time}: }
-  \item{\emph{Think time}: }
-  \item{\emph{Dev time}: }
-  \item{\emph{XP time}: }
-  \item{\emph{Analysis time}: }
-  \item{\emph{Write time}: }
-  \item{\emph{Wasted time}: }
-\end{enumerate}
-
-\textbf{Per Experiment:}
-\begin{enumerate}
-  \item{\emph{Total time}: }
-  \item{\emph{Dev time}: }
-  \item{\emph{Setup time}: }
-\end{enumerate}
+\begin{table}[htbp]
+  \centering
+  \caption{Time spent per experiment.}
+  \begin{tabular}{| l | r | r | r |}
+    \hline
+    & \multicolumn{3}{| c |}{Time (hours)} \\
+    \hline
+    & Dev & Setup & Total \\
+    \hline
+    Baseline & & & \\
+    Overheads & & & \\
+    Provisioning & & & \\
+    Utilization & & & \\
+    Speedup & & & \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \end{document}
