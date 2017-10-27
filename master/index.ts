@@ -7,6 +7,7 @@ import {TaskQueueState} from './lib/types'
 import taskQueue, {addTask} from './lib/task-queue'
 import createAppServer from './lib/app-server'
 import createScheduler from './lib/scheduler'
+import instances from './lib/instances'
 
 const APP_PORT = parseInt(process.env.PORT || '8000', 10)
 
@@ -15,6 +16,7 @@ const epicMiddleware = createEpicMiddleware(rootEpic)
 
 const rootReducer = combineReducers({
     taskQueue,
+    instances
 })
 
 const store = createStore(rootReducer, applyMiddleware(epicMiddleware))

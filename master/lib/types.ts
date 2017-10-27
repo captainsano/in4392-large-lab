@@ -23,13 +23,18 @@ export interface TaskQueueState {
 
 export interface Instance {
     id: string,
-    state: 'STARTING' | 'RUNNING' | 'TERMINATED',
-    ipAddress: '',
+    ipAddress: string,
     startTime: Moment,
-    terminatedTime: Moment
+    terminatedTime?: Moment,
+    normalTermination?: boolean
 }
 
-interface InstanceAction extends Action {
+export interface InstanceAction extends Action {
     type: 'START_INSTANCE' | 'RUN_INSTANCE' | 'TERMINATE_INSTANCE',
     payload: Instance
+}
+
+export interface InstanceState {
+    starting: { [id: string]: Instance },
+    running: { [id: string]: Instance }
 }
