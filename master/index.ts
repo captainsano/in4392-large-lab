@@ -1,18 +1,23 @@
 import 'rxjs'
-import {createStore, applyMiddleware} from 'redux'
-import {createEpicMiddleware} from 'redux-observable'
+import {createStore, combineReducers, applyMiddleware} from 'redux'
+import {createEpicMiddleware, combineEpics} from 'redux-observable'
+
+import {TaskQueueState} from './lib/types'
 
 import taskQueue, {addTask} from './lib/task-queue'
 import createAppServer from './lib/app-server'
 import createScheduler from './lib/scheduler'
-import {TaskQueueState} from './lib/types'
 
 const APP_PORT = parseInt(process.env.PORT || '8000', 10)
 
-const schedulerEpic = createScheduler()
-const epicMiddleware = createEpicMiddleware(schedulerEpic)
+const rootEpic = combineEpics(createScheduler())
+const epicMiddleware = createEpicMiddleware(rootEpic)
 
-const store = createStore(taskQueue, applyMiddleware(epicMiddleware))
+const rootReducer = combineReducers({
+    taskQueue,
+})
+
+const store = createStore(rootReducer, applyMiddleware(epicMiddleware))
 
 if (store) {
     const appServer = createAppServer({

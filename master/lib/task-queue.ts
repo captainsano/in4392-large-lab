@@ -32,6 +32,13 @@ export default function taskQueue(state = INIT_STATE, {type, payload}: TaskQueue
             )(state) as TaskQueueState
         }
 
+        case 'FAIL_TASK': {
+            return R.compose(
+                R.assocPath(['pending', payload.id], R.dissoc('id', payload)),
+                R.dissocPath(['active', payload.id])
+            )(state) as TaskQueueState
+        }
+
         default:
             return state
     }
@@ -69,6 +76,13 @@ export function finishTask(task: Task): TaskQueueAction {
             ...task,
             finishTime: moment()
         }
+    }
+}
+
+export function failTask(task: Task): TaskQueueAction {
+    return {
+        type: 'FAIL_TASK',
+        payload: R.dissoc('finishTime', task)
     }
 }
 

@@ -20,3 +20,16 @@ export interface TaskQueueState {
     pending: { [id: string]: Task },
     active: { [id: string]: Task }
 }
+
+export interface Instance {
+    id: string,
+    state: 'STARTING' | 'RUNNING' | 'TERMINATED',
+    ipAddress: '',
+    startTime: Moment,
+    terminatedTime: Moment
+}
+
+interface InstanceAction extends Action {
+    type: 'START_INSTANCE' | 'RUN_INSTANCE' | 'TERMINATE_INSTANCE',
+    payload: Instance
+}
