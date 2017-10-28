@@ -1,16 +1,22 @@
 import 'rxjs'
 import {createStore, combineReducers, applyMiddleware, Action} from 'redux'
 import {createEpicMiddleware, combineEpics, ActionsObservable} from 'redux-observable'
-import * as moment from 'moment'
 
-import {MasterState, TaskQueueState} from './lib/types'
+import {Instance, MasterState, TaskQueueState} from './lib/types'
+import * as localMockProvider from './lib/local-mock-provider'
 
 import taskQueue, {addTask} from './lib/task-queue'
 import createAppServer from './lib/app-server'
 import createScheduler from './lib/scheduler'
 import instances, {runInstance, startInstance} from './lib/instances'
+import createProvisioner from './lib/provisioner'
 
 const APP_PORT = parseInt(process.env.PORT || '8000', 10)
+const PROVISIONER_POLICY = {
+    minVMs: 2,
+    maxVMs: 10,
+    taskQueueThreshold: 10
+}
 
 const loggerEpic = function (action$: ActionsObservable<Action>) {
     return action$
@@ -19,7 +25,14 @@ const loggerEpic = function (action$: ActionsObservable<Action>) {
         .mapTo({type: 'NULL'})
 }
 
-const rootEpic = combineEpics(createScheduler(), loggerEpic)
+const rootEpic = combineEpics(
+    createScheduler(),
+    createProvisioner(PROVISIONER_POLICY, {
+        startInstance: localMockProvider.startInstance,
+        terminateInstance: localMockProvider.terminateInstance
+    })
+)
+
 const epicMiddleware = createEpicMiddleware(rootEpic)
 
 const rootReducer = combineReducers({
@@ -39,4 +52,3 @@ if (store) {
         console.log('App server listening on port: ', APP_PORT)
     })
 }
-

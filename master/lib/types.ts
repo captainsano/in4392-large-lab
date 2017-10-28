@@ -26,6 +26,7 @@ export interface Instance {
     ipAddress: string,
     startTime: Moment,
     terminatedTime?: Moment,
+    scheduledForTermination?: boolean,
     normalTermination?: boolean
 }
 
@@ -35,7 +36,7 @@ export interface InstanceRequestAction extends Action {
 }
 
 export interface InstanceAction extends Action {
-    type: 'START_INSTANCE' | 'RUN_INSTANCE' | 'TERMINATE_INSTANCE',
+    type: 'START_INSTANCE' | 'RUN_INSTANCE' | 'UNSCHEDULE_FOR_TERMINATION_INSTANCE' | 'SCHEDULE_FOR_TERMINATION_INSTANCE' | 'TERMINATE_INSTANCE',
     payload: Instance
 }
 

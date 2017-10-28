@@ -8,6 +8,7 @@
     "@types/express": "^4.0.37",
     "@types/ramda": "^0.24.17",
     "aws-sdk": "^2.133.0",
+    "axios": "^0.17.0",
     "body-parser": "^1.18.2",
     "express": "^4.16.2",
     "moment": "^2.19.1",
@@ -20,12 +21,13 @@
   },
   "scripts": {
     "start": "yarn tsc && node index.js",
+    "play": "yarn tsc playground.ts && node playground.js",
+    "mock-app": "yarn tsc mock-app.ts && node mock-app.js",
     "test": "mocha -r ts-node/register lib/**/*.spec.ts"
   },
   "devDependencies": {
     "@types/chai": "^4.0.4",
     "@types/mocha": "^2.2.43",
-    "@types/moment": "^2.13.0",
     "@types/redux": "^3.6.0",
     "@types/uuid": "^3.4.3",
     "chai": "^4.1.2",

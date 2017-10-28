@@ -9,11 +9,11 @@ import {executeTask, pickPendingTasks, failTask, finishTask} from './task-queue'
 const SCHEDULER_INTERVAL = 5000
 const SCHEDULER_DEBOUNCE = 1000
 
-export default function createScheduler() {
-    const schedulerPoll = Observable.merge(Observable.interval(SCHEDULER_INTERVAL), Observable.of(0))
+export default function createScheduler<S extends MasterState>() {
+    const schedulerPoll = Observable.interval(SCHEDULER_INTERVAL).startWith(0)
     const schedulerKickStart = Observable.of(0).delay(SCHEDULER_INTERVAL * 0.5)
 
-    const allocatorEpic = (action$: ActionsObservable<Action>, store: Store<MasterState>) => (
+    const allocatorEpic = (action$: ActionsObservable<Action>, store: Store<S>) => (
         Observable.merge(action$.ofType('ADD_TASK'), schedulerKickStart)
             .switchMap(() => schedulerPoll)
             .debounceTime(SCHEDULER_DEBOUNCE)
@@ -35,12 +35,12 @@ export default function createScheduler() {
 
     )
 
-    const executorEpic = (action$: ActionsObservable<Action>, store: Store<MasterState>) => (
+    const executorEpic = (action$: ActionsObservable<Action>, store: Store<S>) => (
         action$
             .ofType('EXECUTE_TASK')
             .switchMap((action: TaskQueueAction) => {
                 console.log('---> Executing task \n', action.payload)
-                const state = store.getState() as MasterState
+                const state = store.getState() as S
                 const task = action.payload as Task
 
                 if (task.instanceId) {

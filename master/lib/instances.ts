@@ -1,5 +1,6 @@
 import * as R from 'ramda'
 import {Instance, InstanceAction, InstanceRequestAction, InstanceState} from './types'
+import {Action} from 'redux';
 
 const INIT_STATE: InstanceState = {
     starting: {},
@@ -21,6 +22,30 @@ export default function instances(state = INIT_STATE, {type, payload}: InstanceA
                 R.dissocPath(['starting', payload.id])
             )(state) as InstanceState
 
+        case 'SCHEDULE_FOR_TERMINATION_INSTANCE': {
+            if (state.running[payload.id]) {
+                return R.assocPath(
+                    ['running', payload.id, 'scheduledForTermination'],
+                    true,
+                    state
+                ) as InstanceState
+            }
+
+            return state
+        }
+
+        case 'UNSCHEDULE_FOR_TERMINATION_INSTANCE': {
+            if (state.running[payload.id]) {
+                return R.assocPath(
+                    ['running', payload.id, 'scheduledForTermination'],
+                    false,
+                    state
+                ) as InstanceState
+            }
+
+            return state
+        }
+
         case 'TERMINATE_INSTANCE':
             return R.dissocPath(
                 ['running', payload.id],
@@ -33,10 +58,9 @@ export default function instances(state = INIT_STATE, {type, payload}: InstanceA
 }
 
 // Action creators
-export function requestInstances(count = 1): InstanceRequestAction {
+export function requestInstance(): Action {
     return {
-        type: 'REQUEST_INSTANCES',
-        payload: {count}
+        type: 'REQUEST_INSTANCE'
     }
 }
 
@@ -50,6 +74,20 @@ export function startInstance(instance: Instance): InstanceAction {
 export function runInstance(instance: Instance): InstanceAction {
     return {
         type: 'RUN_INSTANCE',
+        payload: instance
+    }
+}
+
+export function scheduleForTerminationInstance(instance: Instance): InstanceAction {
+    return {
+        type: 'SCHEDULE_FOR_TERMINATION_INSTANCE',
+        payload: instance
+    }
+}
+
+export function unscheduleForTerminationInstance(instance: Instance): InstanceAction {
+    return {
+        type: 'UNSCHEDULE_FOR_TERMINATION_INSTANCE',
         payload: instance
     }
 }
