@@ -5,9 +5,14 @@
   "license": "MIT",
   "dependencies": {
     "request": "^2.83.0",
-    "request-promise-native": "^1.0.5"
+    "request-promise-native": "^1.0.5",
+    "typescript": "^2.5.3"
   },
   "devDependencies": {
-    "@types/node": "^8.0.47"
+    "@types/node": "^8.0.47",
+    "@types/request-promise-native": "^1.0.9"
+  },
+  "scripts": {
+    "start": "yarn tsc && node index.js"
   }
 }
