@@ -9,10 +9,11 @@ export interface Task {
     executeStartTime?: Moment,
     finishTime?: Moment,
     instanceId?: string
+    failed?: boolean
 }
 
 export interface TaskQueueAction extends Action {
-    type: 'ADD_TASK' | 'EXECUTE_TASK' | 'FINISH_TASK' | 'FAIL_TASK',
+    type: 'ADD_TASK' | 'EXECUTE_TASK' | 'FINISH_TASK' | 'FAIL_TASK' | 'TERMINATE_TASK',
     payload: Task
 }
 

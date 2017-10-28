@@ -12,7 +12,7 @@ app.post('/process', (_, res) => {
     setTimeout(() => {
         console.log('Responding')
         res.json([10, 0])
-    }, 10000)
+    }, 5000)
 })
 
 
@@ -25,7 +25,7 @@ const health = express()
 health.get('/health', (_, res) => {
     setTimeout(() => {
         res.json({ok: true})
-    }, 10000)
+    }, 1000)
 })
 
 health.listen(HEALTH_PORT, () => {

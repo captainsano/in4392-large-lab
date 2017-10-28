@@ -39,6 +39,13 @@ export default function taskQueue(state = INIT_STATE, {type, payload}: TaskQueue
             )(state) as TaskQueueState
         }
 
+        case 'TERMINATE_TASK': {
+            return R.compose(
+                R.dissocPath(['pending', payload.id]),
+                R.dissocPath(['active', payload.id])
+            )(state) as TaskQueueState
+        }
+
         default:
             return state
     }
@@ -70,6 +77,7 @@ export function executeTask(task: Task, instanceId: string): TaskQueueAction {
 }
 
 export function finishTask(task: Task): TaskQueueAction {
+    console.log('----> Finishing task: ', task.id)
     return {
         type: 'FINISH_TASK',
         payload: {
@@ -83,6 +91,13 @@ export function failTask(task: Task): TaskQueueAction {
     return {
         type: 'FAIL_TASK',
         payload: R.dissoc('finishTime', task)
+    }
+}
+
+export function terminateTask(task: Task): TaskQueueAction {
+    return {
+        type: 'TERMINATE_TASK',
+        payload: R.assoc('failed', true, task)
     }
 }
 

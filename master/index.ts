@@ -18,15 +18,15 @@ const PROVISIONER_POLICY = {
     taskQueueThreshold: 10
 }
 
-const loggerEpic = function (action$: ActionsObservable<Action>) {
-    return action$
-        .filter((a: Action) => a.type !== 'NULL')
-        .do((a: Action) => console.log('----> ', a.type, '%%%% \n', a, '\n-----'))
-        .mapTo({type: 'NULL'})
-}
+// const loggerEpic = function (action$: ActionsObservable<Action>) {
+//     return action$
+//         .filter((a: Action) => a.type !== 'NULL')
+//         .do((a: Action) => console.log('----> ', a.type, '%%%% \n', a, '\n-----'))
+//         .mapTo({type: 'NULL'})
+// }
 
 const rootEpic = combineEpics(
-    createScheduler(),
+    createScheduler({maxRetries: 5}),
     createProvisioner(PROVISIONER_POLICY, {
         startInstance: localMockProvider.startInstance,
         terminateInstance: localMockProvider.terminateInstance
@@ -51,4 +51,6 @@ if (store) {
     appServer.listen(APP_PORT, () => {
         console.log('App server listening on port: ', APP_PORT)
     })
+
+    store.dispatch({type: 'BOOTSTRAP'})
 }

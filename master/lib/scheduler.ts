@@ -1,15 +1,21 @@
 import {Store, Action} from 'redux'
 import {ActionsObservable, combineEpics} from 'redux-observable'
 import {Observable} from 'rxjs/Observable'
+import axios from 'axios'
 
 import {MasterState, Task, TaskQueueAction} from './types'
 import {pickFreeInstances} from './utils'
-import {executeTask, pickPendingTasks, failTask, finishTask} from './task-queue'
+import {executeTask, pickPendingTasks, failTask, finishTask, terminateTask} from './task-queue'
 
 const SCHEDULER_INTERVAL = 5000
 const SCHEDULER_DEBOUNCE = 1000
+const TASK_TIMEOUT = 15 * 1000
 
-export default function createScheduler<S extends MasterState>() {
+interface SchedulerPolicy {
+    maxRetries: number
+}
+
+export default function createScheduler<S extends MasterState>(policy: SchedulerPolicy) {
     const schedulerPoll = Observable.interval(SCHEDULER_INTERVAL).startWith(0)
     const schedulerKickStart = Observable.of(0).delay(SCHEDULER_INTERVAL * 0.5)
 
@@ -17,7 +23,7 @@ export default function createScheduler<S extends MasterState>() {
         Observable.merge(action$.ofType('ADD_TASK'), schedulerKickStart)
             .switchMap(() => schedulerPoll)
             .debounceTime(SCHEDULER_DEBOUNCE)
-            .do(() => console.log('---> SCHEDULER is running'))
+            // .do(() => console.log('---> SCHEDULER is running'))
             .switchMap(() => {
                 const state = store.getState()
                 const freeInstances = pickFreeInstances(state)
@@ -30,7 +36,7 @@ export default function createScheduler<S extends MasterState>() {
                         .map(([fi, pt]) => executeTask(pt, fi.id))
                 }
 
-                return Observable.from([])
+                return Observable.of({type: 'NULL'})
             })
 
     )
@@ -38,22 +44,26 @@ export default function createScheduler<S extends MasterState>() {
     const executorEpic = (action$: ActionsObservable<Action>, store: Store<S>) => (
         action$
             .ofType('EXECUTE_TASK')
-            .switchMap((action: TaskQueueAction) => {
+            .flatMap((action: TaskQueueAction) => {
                 console.log('---> Executing task \n', action.payload)
                 const state = store.getState() as S
                 const task = action.payload as Task
+
+                if (task.retries >= policy.maxRetries) {
+                    return Observable.of(terminateTask(task))
+                }
 
                 if (task.instanceId) {
                     const instance = state.instances.running[task.instanceId]
 
                     return Observable
-                        .ajax({
-                            url: `http://${instance.ipAddress}/process`,
-                            method: 'POST',
-                            body: task.args
-                        })
+                        .fromPromise(axios.post(`http://${instance.ipAddress}:3000/process`, task.args))
+                        .timeout(TASK_TIMEOUT)
                         .mapTo(finishTask(task))
-                        .catch(() => Observable.of(failTask(task)))
+                        .catch((e) => {
+                            console.log('---> Task fail error ', e)
+                            return Observable.of(failTask(task))
+                        })
                 }
 
                 return Observable.of(failTask(task))

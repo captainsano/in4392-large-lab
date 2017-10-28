@@ -59,6 +59,7 @@ export default function instances(state = INIT_STATE, {type, payload}: InstanceA
 
 // Action creators
 export function requestInstance(): Action {
+    console.log('request instance action created')
     return {
         type: 'REQUEST_INSTANCE'
     }

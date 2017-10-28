@@ -40,24 +40,43 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
     const provisionerPoll = Observable.interval(PROVISIONER_INTERVAL).startWith(0)
     const provisionerKickStart = Observable.of(0).delay(PROVISIONER_INTERVAL * 0.5)
 
-    console.log('Am here')
+    const provisionerBootstrapEpic = (action$: ActionsObservable<Action>, store: Store<S>) => (
+        action$
+            .ofType('BOOTSTRAP')
+            .switchMapTo(Observable.of(requestInstance()).repeat(policy.minVMs))
+            .take(policy.minVMs)
+    )
 
     const queueThresholdProvisioningPolicyEpic = (action$: ActionsObservable<Action>, store: Store<S>) => (
         Observable.merge(action$.filter((a: Action) => a.type.endsWith('TASK')), provisionerKickStart)
             .switchMap(() => provisionerPoll)
             .debounceTime(PROVISIONER_DEBOUNCE)
-            .do(() => '------> PROVISIONER is running')
-            .concatMap(() => {
+            // .do(() => console.log('------> PROVISIONER is running'))
+            .flatMap(() => {
                 const state = store.getState() as S
                 const pendingQueueLength = R.toPairs(state.taskQueue.pending).length
 
-                // TODO: Adjust for policy and maintain min-vms, max-vms
+                const allRunningInstances = R.compose(
+                    R.map(([id, instance]) => ({...instance, id})),
+                    R.toPairs
+                )(state.instances.running) as Instance[]
 
                 if (pendingQueueLength > policy.taskQueueThreshold) {
-                    return Observable.of(requestInstance())
+                    if (allRunningInstances.length < policy.maxVMs) {
+                        return Observable.of(requestInstance())
+                    } else {
+                        return Observable.of({type: 'NULL'})
+                    }
                 } else if (pendingQueueLength < policy.taskQueueThreshold) {
-                    const freeInstances = pickFreeInstances(state)
-                    return Observable.of(...freeInstances).map(scheduleForTerminationInstance)
+                    const runningInstancesNotScheduledForTermination = R.reject(
+                        (i: Instance) => i.scheduledForTermination || false
+                    )(allRunningInstances)
+
+                    const diff = runningInstancesNotScheduledForTermination.length - policy.minVMs
+                    if (diff > 0) {
+                        const freeInstances = pickFreeInstances(state)
+                        return Observable.of(...freeInstances).take(diff).map(scheduleForTerminationInstance)
+                    }
                 }
 
                 return Observable.of({type: 'NULL'})
@@ -67,6 +86,7 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
     const requestInstanceEpic = (action$: ActionsObservable<Action>, store: Store<S>) => (
         action$
             .ofType('REQUEST_INSTANCE')
+            .do(() => console.log('requesting instance'))
             .flatMap(() => {
                 const state = store.getState() as S
                 // Try to recover an existing instance scheduled for termination
@@ -120,6 +140,7 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
     )
 
     return combineEpics(
+        provisionerBootstrapEpic,
         queueThresholdProvisioningPolicyEpic,
         requestInstanceEpic,
         instanceStartEpic,
