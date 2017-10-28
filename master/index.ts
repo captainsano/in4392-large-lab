@@ -47,10 +47,13 @@ if (store) {
 
     store.dispatch({type: 'BOOTSTRAP'})
 
-    process.on('SIGTERM', () => {
+    const cleanup = () => {
+        store.dispatch({type: 'TERMINATE_ALL_INSTANCES'})
         server.close(() => {
-            store.dispatch({type: 'TERMINATE_ALL_INSTANCES'})
             setTimeout(() => process.exit(0), 1000)
         })
-    })
+    }
+
+    process.on('SIGTERM', cleanup)
+    process.on('SIGINT', cleanup)
 }

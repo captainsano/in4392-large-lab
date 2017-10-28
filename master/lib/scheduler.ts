@@ -9,7 +9,7 @@ import {executeTask, pickPendingTasks, failTask, finishTask, terminateTask} from
 
 const SCHEDULER_INTERVAL = 5000
 const SCHEDULER_DEBOUNCE = 1000
-const TASK_TIMEOUT = 15 * 1000
+const TASK_TIMEOUT = 25 * 1000
 
 interface SchedulerPolicy {
     maxRetries: number

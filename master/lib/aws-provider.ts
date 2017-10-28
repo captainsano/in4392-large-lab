@@ -14,7 +14,7 @@ const EC2_INSTANCE_PARAMS = {
     MaxCount: 1,
     MinCount: 1,
     SecurityGroupIds: ['sg-d82e65aa'],
-    InstanceType: 't2.nano'
+    InstanceType: 'm3.medium'
 }
 
 const ec2DataToInstance = function (ec2Data: EC2.Types.Reservation): Instance | null {
