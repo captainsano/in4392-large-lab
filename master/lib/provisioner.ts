@@ -139,12 +139,27 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
             .mapTo({type: 'NULL'})
     )
 
+    const terminateAllInstancesEpic = (action$: ActionsObservable<Action>, store: Store<S>) => (
+        action$
+            .ofType('TERMINATE_ALL_INSTANCES')
+            .switchMap(() => {
+                const state = store.getState()
+                const allRunningInstances = R.compose(
+                    R.map(([id, instance]) => ({...instance, id})),
+                    R.toPairs
+                )(state.instances.running) as Instance[]
+
+                return Observable.of(...allRunningInstances).map(terminateInstance)
+            })
+    )
+
     return combineEpics(
         provisionerBootstrapEpic,
         queueThresholdProvisioningPolicyEpic,
         requestInstanceEpic,
         instanceStartEpic,
         instanceTerminateSchedulerEpic,
-        instanceTerminateEpic
+        instanceTerminateEpic,
+        terminateAllInstancesEpic
     )
 }
