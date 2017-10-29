@@ -15,10 +15,21 @@ import reportReducer from './lib/report-reducer'
 import createReporter from './lib/reporter'
 
 const APP_PORT = parseInt(process.env.PORT || '8000', 10)
+const POLICY = {
+    maxRetries: parseInt(process.env.POLICY_MAXRETRIES || '5', 10),
+    minVMs: parseInt(process.env.POLICY_MINVMS || '0', 10),
+    maxVMs: parseInt(process.env.POLICY_MAXVMS || '10', 10),
+    taskQueueThreshold: parseInt(process.env.POLICY_THRESHOLD || '5', 10)
+}
+
 const PROVISIONER_POLICY = {
-    minVMs: 0,
-    maxVMs: 10,
-    taskQueueThreshold: 10
+    minVMs: POLICY.minVMs,
+    maxVMs: POLICY.maxVMs,
+    taskQueueThreshold: POLICY.taskQueueThreshold
+}
+
+const SCHEDULER_POLICY = {
+    maxRetries: POLICY.maxRetries
 }
 
 const reportStore = createStore(reportReducer)
@@ -32,7 +43,7 @@ const provider = (process.env.PROVIDER || '').toLowerCase() === 'local' ? {
 }
 
 const rootEpic = combineEpics(
-    createScheduler({maxRetries: 5}),
+    createScheduler(SCHEDULER_POLICY),
     createProvisioner(PROVISIONER_POLICY, provider),
     createReporter(reportStore as Store<ReportState>)
 )

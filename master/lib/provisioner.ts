@@ -8,7 +8,7 @@ import {ProvisionerPolicy, Instance, MasterState, InstanceAction} from './types'
 import {
     requestInstance, runInstance, scheduleForTerminationInstance, startInstance, terminateInstance,
     unscheduleForTerminationInstance
-} from "./instances";
+} from './instances'
 import {pickFreeInstances, pickFreeInstancesScheduledForTermination} from "./utils";
 
 const PROVISIONER_INTERVAL = 5000
@@ -117,6 +117,16 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
         action$
             .ofType('SCHEDULE_FOR_TERMINATION_INSTANCE')
             .map((action: InstanceAction) => action.payload)
+            // Do not schedule the last instance for termination if pending queue is not empty
+            .filter(() => {
+                const state = store.getState()
+                const freeInstancesLength = pickFreeInstances(store.getState()).length
+                const pendingTasksLength = R.toPairs(state.taskQueue.pending).length
+
+                const shouldTerminate = !(freeInstancesLength === 1 && pendingTasksLength > 0)
+                console.log('=======> should terminate: ', shouldTerminate)
+                return shouldTerminate
+            })
             .flatMap((instance: Instance) => (
                 Observable
                     .of(instance)

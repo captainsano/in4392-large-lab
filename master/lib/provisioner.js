@@ -75,6 +75,14 @@ function createProvisioner(policy, cloudProvider) {
     const instanceTerminateSchedulerEpic = (action$, store) => (action$
         .ofType('SCHEDULE_FOR_TERMINATION_INSTANCE')
         .map((action) => action.payload)
+        .filter(() => {
+        const state = store.getState();
+        const freeInstancesLength = utils_1.pickFreeInstances(store.getState()).length;
+        const pendingTasksLength = R.toPairs(state.taskQueue.pending).length;
+        const shouldTerminate = !(freeInstancesLength === 1 && pendingTasksLength > 0);
+        console.log('=======> should terminate: ', shouldTerminate);
+        return shouldTerminate;
+    })
         .flatMap((instance) => (Observable_1.Observable
         .of(instance)
         .delay(TERMINATION_WAIT_TIME)

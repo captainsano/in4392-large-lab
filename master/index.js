@@ -13,10 +13,19 @@ const provisioner_1 = require("./lib/provisioner");
 const report_reducer_1 = require("./lib/report-reducer");
 const reporter_1 = require("./lib/reporter");
 const APP_PORT = parseInt(process.env.PORT || '8000', 10);
+const POLICY = {
+    maxRetries: parseInt(process.env.POLICY_MAXRETRIES || '5', 10),
+    minVMs: parseInt(process.env.POLICY_MINVMS || '0', 10),
+    maxVMs: parseInt(process.env.POLICY_MAXVMS || '10', 10),
+    taskQueueThreshold: parseInt(process.env.POLICY_THRESHOLD || '5', 10)
+};
 const PROVISIONER_POLICY = {
-    minVMs: 0,
-    maxVMs: 10,
-    taskQueueThreshold: 10
+    minVMs: POLICY.minVMs,
+    maxVMs: POLICY.maxVMs,
+    taskQueueThreshold: POLICY.taskQueueThreshold
+};
+const SCHEDULER_POLICY = {
+    maxRetries: POLICY.maxRetries
 };
 const reportStore = redux_1.createStore(report_reducer_1.default);
 const provider = (process.env.PROVIDER || '').toLowerCase() === 'local' ? {
@@ -26,7 +35,7 @@ const provider = (process.env.PROVIDER || '').toLowerCase() === 'local' ? {
     startInstance: awsProvider.startInstance,
     terminateInstance: awsProvider.terminateInstance
 };
-const rootEpic = redux_observable_1.combineEpics(scheduler_1.default({ maxRetries: 5 }), provisioner_1.default(PROVISIONER_POLICY, provider), reporter_1.default(reportStore));
+const rootEpic = redux_observable_1.combineEpics(scheduler_1.default(SCHEDULER_POLICY), provisioner_1.default(PROVISIONER_POLICY, provider), reporter_1.default(reportStore));
 const epicMiddleware = redux_observable_1.createEpicMiddleware(rootEpic);
 const rootReducer = redux_1.combineReducers({
     taskQueue: task_queue_1.default,
