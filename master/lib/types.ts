@@ -26,6 +26,7 @@ export interface Instance {
     id: string,
     ipAddress: string,
     startTime: Moment,
+    readyTime?: Moment,
     terminatedTime?: Moment,
     scheduledForTermination?: boolean,
     normalTermination?: boolean // for spot instances

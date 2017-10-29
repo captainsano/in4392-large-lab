@@ -77,7 +77,7 @@ export function startInstance(instance: Instance): InstanceAction {
 export function runInstance(instance: Instance): InstanceAction {
     return {
         type: 'RUN_INSTANCE',
-        payload: instance
+        payload: {...instance, readyTime: moment()}
     }
 }
 

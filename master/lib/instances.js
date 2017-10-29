@@ -51,7 +51,7 @@ exports.startInstance = startInstance;
 function runInstance(instance) {
     return {
         type: 'RUN_INSTANCE',
-        payload: instance
+        payload: Object.assign({}, instance, { readyTime: moment() })
     };
 }
 exports.runInstance = runInstance;
