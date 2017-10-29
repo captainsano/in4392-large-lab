@@ -27,7 +27,7 @@ function instances(state = INIT_STATE, { type, payload }) {
             return state;
         }
         case 'TERMINATE_INSTANCE':
-            return R.dissocPath(['running', payload.id], state);
+            return R.compose(R.dissocPath(['starting', payload.id]), R.dissocPath(['running', payload.id]))(state);
         default:
             return state;
     }

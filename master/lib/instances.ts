@@ -49,10 +49,10 @@ export default function instances(state = INIT_STATE, {type, payload}: InstanceA
         }
 
         case 'TERMINATE_INSTANCE':
-            return R.dissocPath(
-                ['running', payload.id],
-                state
-            ) as InstanceState
+            return R.compose(
+                R.dissocPath(['starting', payload.id]),
+                R.dissocPath(['running', payload.id])
+            )(state) as InstanceState
 
         default:
             return state
