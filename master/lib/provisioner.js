@@ -37,7 +37,7 @@ function createProvisioner(policy, cloudProvider) {
         const allStartingInstances = R.compose(R.map(([id, instance]) => (Object.assign({}, instance, { id }))), R.toPairs)(state.instances.starting);
         if (pendingQueueLength > policy.taskQueueThreshold ||
             (pendingQueueLength > 0 && allRunningInstances.length + allStartingInstances.length === 0)) {
-            if (allRunningInstances.length < policy.maxVMs) {
+            if (allRunningInstances.length + allStartingInstances.length < policy.maxVMs) {
                 return Observable_1.Observable.of(instances_1.requestInstance());
             }
             else {
@@ -77,22 +77,27 @@ function createProvisioner(policy, cloudProvider) {
     const instanceTerminateSchedulerEpic = (action$, store) => (action$
         .ofType('SCHEDULE_FOR_TERMINATION_INSTANCE')
         .map((action) => action.payload)
-        .filter(() => {
+        .flatMap((instance) => {
+        // Do not schedule the last instance for termination if pending queue is not empty
         const state = store.getState();
-        const freeInstancesLength = utils_1.pickFreeInstances(store.getState()).length;
+        const runningInstances = R.toPairs(state.instances.running);
         const pendingTasksLength = R.toPairs(state.taskQueue.pending).length;
-        const shouldTerminate = !(freeInstancesLength === 1 && pendingTasksLength > 0);
+        const shouldTerminate = !(runningInstances.length === 1 && pendingTasksLength > 0);
         console.log('=======> should terminate: ', shouldTerminate);
-        return shouldTerminate;
-    })
-        .flatMap((instance) => (Observable_1.Observable
-        .of(instance)
-        .delay(TERMINATION_WAIT_TIME)
-        .takeUntil(action$
-        .ofType('UNSCHEDULE_FOR_TERMINATION_INSTANCE')
-        .map((a) => a.payload)
-        .filter((i) => instance.id === i.id))
-        .map((i) => instances_1.terminateInstance(i)))));
+        if (shouldTerminate) {
+            return Observable_1.Observable
+                .of(instance)
+                .delay(TERMINATION_WAIT_TIME)
+                .takeUntil(action$
+                .ofType('UNSCHEDULE_FOR_TERMINATION_INSTANCE')
+                .map((a) => a.payload)
+                .filter((i) => instance.id === i.id))
+                .map((i) => instances_1.terminateInstance(i));
+        }
+        else {
+            return Observable_1.Observable.of(instances_1.unscheduleForTerminationInstance(instance));
+        }
+    }));
     const instanceTerminateEpic = (action$, store) => (action$
         .ofType('TERMINATE_INSTANCE')
         .map((action) => action.payload)

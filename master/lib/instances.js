@@ -20,6 +20,7 @@ function instances(state = INIT_STATE, { type, payload }) {
             return state;
         }
         case 'UNSCHEDULE_FOR_TERMINATION_INSTANCE': {
+            console.log(`unscheduling ${payload.id} out of termination`);
             if (state.running[payload.id]) {
                 return R.assocPath(['running', payload.id, 'scheduledForTermination'], false, state);
             }

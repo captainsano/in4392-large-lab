@@ -2,42 +2,36 @@ import * as R from 'ramda'
 
 import {Instance, MasterState, Task} from './types'
 
-export function pickFreeInstances(state: MasterState): Instance[] {
-    const runningInstances = R.compose(
-        R.map(([id, instance]) => ({...instance, id})),
-        R.toPairs
-    )(state.instances.running) as Instance[]
+export function getRunningInstances(state: MasterState, includeScheduledForTermination = false): Instance[] {
+    const runningInstances = R.toPairs(state.instances.running).map(([id, instance]) => ({
+        ...instance,
+        id
+    })) as Instance[]
 
-    const runningInstancesNotForTermination = R.reject(
-        (i: Instance) => i.scheduledForTermination || false
-    )(runningInstances)
+    return includeScheduledForTermination ? runningInstances : runningInstances.filter((i) => !(i.scheduledForTermination || false))
+}
 
-    const activeTasks = R.compose(
+export function getActiveTasks(state: MasterState) {
+    return R.compose(
         R.map(([id, task]) => ({...task, id})),
         R.toPairs
     )(state.taskQueue.active) as Task[]
+}
 
-    return R.reject(
-        (i: Instance) => R.any((t: Task) => t.instanceId === i.id)(activeTasks)
-    )(runningInstancesNotForTermination)
+export function pickFreeInstances(state: MasterState): Instance[] {
+    const runningInstances = getRunningInstances(state)
+    const activeTasks = getActiveTasks(state)
+
+    return R.reject((i: Instance) => R.any((t: Task) => t.instanceId === i.id)(activeTasks))(runningInstances)
 }
 
 export function pickFreeInstancesScheduledForTermination(state: MasterState): Instance[] {
-    const runningInstances = R.compose(
-        R.map(([id, instance]) => ({...instance, id})),
-        R.toPairs
-    )(state.instances.running) as Instance[]
-
-    const runningInstancesForTermination = R.filter(
-        (i: Instance) => i.scheduledForTermination || false
-    )(runningInstances)
-
-    const activeTasks = R.compose(
-        R.map(([id, task]) => ({...task, id})),
-        R.toPairs
-    )(state.taskQueue.active) as Task[]
+    const runningInstances = getRunningInstances(state, true)
+    const runningInstancesForTermination = R.filter((i: Instance) => i.scheduledForTermination || false, runningInstances)
+    const activeTasks = getActiveTasks(state)
 
     return R.reject(
         (i: Instance) => R.any((t: Task) => t.instanceId === i.id)(activeTasks)
     )(runningInstancesForTermination)
 }
+

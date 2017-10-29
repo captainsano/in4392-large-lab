@@ -21,7 +21,7 @@ const APP_PORT = parseInt(process.env.PORT || '8000', 10)
 const POLICY = {
     maxRetries: parseInt(process.env.POLICY_MAXRETRIES || '5', 10),
     minVMs: parseInt(process.env.POLICY_MINVMS || '0', 10),
-    maxVMs: parseInt(process.env.POLICY_MAXVMS || '10', 10),
+    maxVMs: parseInt(process.env.POLICY_MAXVMS || '5', 10),
     taskQueueThreshold: parseInt(process.env.POLICY_THRESHOLD || '5', 10)
 }
 
