@@ -11,9 +11,8 @@ const TASK_TIMEOUT = 25 * 1000;
 function createScheduler(policy) {
     const schedulerPoll = Observable_1.Observable.interval(SCHEDULER_INTERVAL).startWith(0);
     const schedulerKickStart = Observable_1.Observable.of(0).delay(SCHEDULER_INTERVAL * 0.5);
-    const allocatorEpic = (action$, store) => (Observable_1.Observable.merge(action$.ofType('ADD_TASK'), schedulerKickStart)
+    const allocatorEpic = (action$, store) => (Observable_1.Observable.merge(action$.ofType('ADD_TASK').debounceTime(SCHEDULER_DEBOUNCE), schedulerKickStart)
         .switchMap(() => schedulerPoll)
-        .debounceTime(SCHEDULER_DEBOUNCE)
         .switchMap(() => {
         const state = store.getState();
         const freeInstances = utils_1.pickFreeInstances(state);

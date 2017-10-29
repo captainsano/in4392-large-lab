@@ -2,6 +2,7 @@ import 'rxjs'
 import {createStore, combineReducers, applyMiddleware, Store} from 'redux'
 import {createEpicMiddleware, combineEpics} from 'redux-observable'
 import * as moment from 'moment'
+import * as R from 'ramda'
 
 import {MasterState, ReportState} from './lib/types'
 import * as awsProvider from './lib/aws-provider'
@@ -62,7 +63,23 @@ const store = createStore(rootReducer, applyMiddleware(epicMiddleware))
 
 if (store) {
     const appServer = createAppServer({
-        getState: () => store.getState() as MasterState,
+        getState: (summarized: boolean) => {
+            const state = store.getState() as MasterState
+            if (!summarized) {
+                return state
+            }
+
+            return {
+                taskQueue: {
+                    pending: R.toPairs(state.taskQueue.pending).length,
+                    active: R.toPairs(state.taskQueue.active).length,
+                },
+                instances: {
+                    starting: R.toPairs(state.instances.starting).length,
+                    running: R.toPairs(state.instances.running).length,
+                }
+            }
+        },
         getReport: () => reportStore.getState() as ReportState,
         getUptime: () => moment().valueOf() - START_TIME.valueOf(),
         addTask: (args) => store.dispatch(addTask(args)),

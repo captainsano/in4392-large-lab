@@ -2,7 +2,7 @@ import * as express from 'express'
 import * as bodyParser from 'body-parser'
 
 interface AppParams {
-    getState: () => object,
+    getState: (summarized: boolean) => object,
     getReport: () => object,
     getUptime: () => number,
     addTask: (args: object) => void,
@@ -20,7 +20,7 @@ export default function createAppServer({getState, getReport, getUptime, addTask
     })
 
     server.get('/state', (req, res) => {
-        res.json(getState())
+        res.json(getState(req.query.summarized || false))
     })
 
     server.get('/report', (req, res) => {

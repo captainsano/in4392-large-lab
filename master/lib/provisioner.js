@@ -27,9 +27,8 @@ function createProvisioner(policy, cloudProvider) {
         .ofType('BOOTSTRAP')
         .switchMapTo(Observable_1.Observable.of(instances_1.requestInstance()).repeat(policy.minVMs))
         .take(policy.minVMs));
-    const queueThresholdProvisioningPolicyEpic = (action$, store) => (Observable_1.Observable.merge(action$.filter((a) => a.type.endsWith('TASK')), provisionerKickStart)
+    const queueThresholdProvisioningPolicyEpic = (action$, store) => (Observable_1.Observable.merge(action$.filter((a) => a.type.endsWith('TASK')).debounceTime(PROVISIONER_DEBOUNCE), provisionerKickStart)
         .switchMap(() => provisionerPoll)
-        .debounceTime(PROVISIONER_DEBOUNCE)
         .flatMap(() => {
         const state = store.getState();
         const pendingQueueLength = R.toPairs(state.taskQueue.pending).length;

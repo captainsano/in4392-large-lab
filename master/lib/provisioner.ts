@@ -48,9 +48,8 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
     )
 
     const queueThresholdProvisioningPolicyEpic = (action$: ActionsObservable<Action>, store: Store<S>) => (
-        Observable.merge(action$.filter((a: Action) => a.type.endsWith('TASK')), provisionerKickStart)
+        Observable.merge(action$.filter((a: Action) => a.type.endsWith('TASK')).debounceTime(PROVISIONER_DEBOUNCE), provisionerKickStart)
             .switchMap(() => provisionerPoll)
-            .debounceTime(PROVISIONER_DEBOUNCE)
             // .do(() => console.log('------> PROVISIONER is running'))
             .flatMap(() => {
                 const state = store.getState() as S

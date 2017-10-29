@@ -20,9 +20,8 @@ export default function createScheduler<S extends MasterState>(policy: Scheduler
     const schedulerKickStart = Observable.of(0).delay(SCHEDULER_INTERVAL * 0.5)
 
     const allocatorEpic = (action$: ActionsObservable<Action>, store: Store<S>) => (
-        Observable.merge(action$.ofType('ADD_TASK'), schedulerKickStart)
+        Observable.merge(action$.ofType('ADD_TASK').debounceTime(SCHEDULER_DEBOUNCE), schedulerKickStart)
             .switchMap(() => schedulerPoll)
-            .debounceTime(SCHEDULER_DEBOUNCE)
             // .do(() => console.log('---> SCHEDULER is running'))
             .switchMap(() => {
                 const state = store.getState()

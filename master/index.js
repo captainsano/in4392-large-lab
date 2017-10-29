@@ -4,6 +4,7 @@ require("rxjs");
 const redux_1 = require("redux");
 const redux_observable_1 = require("redux-observable");
 const moment = require("moment");
+const R = require("ramda");
 const awsProvider = require("./lib/aws-provider");
 const localProvider = require("./lib/local-mock-provider");
 const task_queue_1 = require("./lib/task-queue");
@@ -18,7 +19,7 @@ const APP_PORT = parseInt(process.env.PORT || '8000', 10);
 const POLICY = {
     maxRetries: parseInt(process.env.POLICY_MAXRETRIES || '5', 10),
     minVMs: parseInt(process.env.POLICY_MINVMS || '0', 10),
-    maxVMs: parseInt(process.env.POLICY_MAXVMS || '10', 10),
+    maxVMs: parseInt(process.env.POLICY_MAXVMS || '5', 10),
     taskQueueThreshold: parseInt(process.env.POLICY_THRESHOLD || '5', 10)
 };
 const PROVISIONER_POLICY = {
@@ -46,7 +47,22 @@ const rootReducer = redux_1.combineReducers({
 const store = redux_1.createStore(rootReducer, redux_1.applyMiddleware(epicMiddleware));
 if (store) {
     const appServer = app_server_1.default({
-        getState: () => store.getState(),
+        getState: (summarized) => {
+            const state = store.getState();
+            if (!summarized) {
+                return state;
+            }
+            return {
+                taskQueue: {
+                    pending: R.toPairs(state.taskQueue.pending).length,
+                    active: R.toPairs(state.taskQueue.active).length,
+                },
+                instances: {
+                    starting: R.toPairs(state.instances.starting).length,
+                    running: R.toPairs(state.instances.running).length,
+                }
+            };
+        },
         getReport: () => reportStore.getState(),
         getUptime: () => moment().valueOf() - START_TIME.valueOf(),
         addTask: (args) => store.dispatch(task_queue_1.addTask(args)),

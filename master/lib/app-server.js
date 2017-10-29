@@ -10,7 +10,7 @@ function createAppServer({ getState, getReport, getUptime, addTask, terminateAll
         res.status(200).end('added task');
     });
     server.get('/state', (req, res) => {
-        res.json(getState());
+        res.json(getState(req.query.summarized || false));
     });
     server.get('/report', (req, res) => {
         res.json(Object.assign({}, getReport(), { uptime: getUptime() }));
