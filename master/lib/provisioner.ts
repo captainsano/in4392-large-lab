@@ -72,7 +72,10 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
                     } else {
                         return Observable.of({type: 'NULL'})
                     }
-                } else if (pendingQueueLength < policy.taskQueueThreshold) {
+                } else if (pendingQueueLength < policy.taskQueueThreshold || (
+                        pendingQueueLength > policy.taskQueueThreshold &&
+                        pendingQueueLength <= (allRunningInstances.length + allStartingInstances.length)
+                    )) {
                     const runningInstancesNotScheduledForTermination = R.reject(
                         (i: Instance) => i.scheduledForTermination || false
                     )(allRunningInstances)

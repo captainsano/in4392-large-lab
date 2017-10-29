@@ -43,7 +43,8 @@ function createProvisioner(policy, cloudProvider) {
                 return Observable_1.Observable.of({ type: 'NULL' });
             }
         }
-        else if (pendingQueueLength < policy.taskQueueThreshold) {
+        else if (pendingQueueLength < policy.taskQueueThreshold || (pendingQueueLength > policy.taskQueueThreshold &&
+            pendingQueueLength <= (allRunningInstances.length + allStartingInstances.length))) {
             const runningInstancesNotScheduledForTermination = R.reject((i) => i.scheduledForTermination || false)(allRunningInstances);
             const diff = runningInstancesNotScheduledForTermination.length - policy.minVMs;
             if (diff > 0) {
