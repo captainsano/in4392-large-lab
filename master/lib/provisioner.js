@@ -34,7 +34,7 @@ function createProvisioner(policy, cloudProvider) {
         const state = store.getState();
         const pendingQueueLength = R.toPairs(state.taskQueue.pending).length;
         const allRunningInstances = R.compose(R.map(([id, instance]) => (Object.assign({}, instance, { id }))), R.toPairs)(state.instances.running);
-        if (pendingQueueLength > policy.taskQueueThreshold) {
+        if (pendingQueueLength > policy.taskQueueThreshold || (pendingQueueLength > 1 && allRunningInstances.length === 0)) {
             if (allRunningInstances.length < policy.maxVMs) {
                 return Observable_1.Observable.of(instances_1.requestInstance());
             }
