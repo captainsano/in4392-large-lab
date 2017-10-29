@@ -48,12 +48,22 @@ function randomTask() {
   
   switch (operation) {
     case 0:
-      return ["scale", [Math.floor(Math.random() * 99 + 1)]]
+      return [
+        "scale",
+        [
+          Math.floor(Math.random() * 99 + 1)
+        ]
+      ]
     case 1: 
-      return [["rotation"], [Math.floor(Math.random() * 359 + 1)]]
+      return [
+        "rotate",
+        [
+          Math.floor(Math.random() * 359 + 1)
+        ]
+      ]
     case 2: 
       return [
-        ["resize"],
+        "resize",
           [
             Math.floor(Math.random() * 100 + 1),
             Math.floor(Math.random() * 100 + 1)
