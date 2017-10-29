@@ -61,7 +61,13 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
                     R.toPairs
                 )(state.instances.running) as Instance[]
 
-                if (pendingQueueLength > policy.taskQueueThreshold || (pendingQueueLength > 1 && allRunningInstances.length === 0)) {
+                const allStartingInstances = R.compose(
+                    R.map(([id, instance]) => ({...instance, id})),
+                    R.toPairs
+                )(state.instances.starting) as Instance[]
+
+                if (pendingQueueLength > policy.taskQueueThreshold ||
+                    (pendingQueueLength > 1 && allRunningInstances.length + allStartingInstances.length === 0)) {
                     if (allRunningInstances.length < policy.maxVMs) {
                         return Observable.of(requestInstance())
                     } else {
