@@ -62,7 +62,7 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
                 )(state.instances.running) as Instance[]
 
                 if (pendingQueueLength > policy.taskQueueThreshold) {
-                    if (allRunningInstances.length <= policy.maxVMs) {
+                    if (allRunningInstances.length < policy.maxVMs) {
                         return Observable.of(requestInstance())
                     } else {
                         return Observable.of({type: 'NULL'})
