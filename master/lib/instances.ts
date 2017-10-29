@@ -1,4 +1,5 @@
 import * as R from 'ramda'
+import * as moment from 'moment'
 import {Instance, InstanceAction, InstanceRequestAction, InstanceState} from './types'
 import {Action} from 'redux';
 
@@ -93,9 +94,13 @@ export function unscheduleForTerminationInstance(instance: Instance): InstanceAc
     }
 }
 
-export function terminateInstance(instance: Instance): InstanceAction {
+export function terminateInstance(instance: Instance, normalTermination = true): InstanceAction {
     return {
         type: 'TERMINATE_INSTANCE',
-        payload: instance
+        payload: ({
+            ...instance,
+            terminatedTime: moment(),
+            normalTermination
+        } as Instance)
     }
 }

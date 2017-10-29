@@ -82,7 +82,7 @@ function createProvisioner(policy, cloudProvider) {
         .ofType('UNSCHEDULE_FOR_TERMINATION_INSTANCE')
         .map((a) => a.payload)
         .filter((i) => instance.id === i.id))
-        .map(instances_1.terminateInstance))));
+        .map((i) => instances_1.terminateInstance(i)))));
     const instanceTerminateEpic = (action$, store) => (action$
         .ofType('TERMINATE_INSTANCE')
         .map((action) => action.payload)
@@ -93,7 +93,7 @@ function createProvisioner(policy, cloudProvider) {
         .switchMap(() => {
         const state = store.getState();
         const allRunningInstances = R.compose(R.map(([id, instance]) => (Object.assign({}, instance, { id }))), R.toPairs)(state.instances.running);
-        return Observable_1.Observable.of(...allRunningInstances).map(instances_1.terminateInstance);
+        return Observable_1.Observable.of(...allRunningInstances).map((i) => instances_1.terminateInstance(i));
     }));
     return redux_observable_1.combineEpics(provisionerBootstrapEpic, queueThresholdProvisioningPolicyEpic, requestInstanceEpic, instanceStartEpic, instanceTerminateSchedulerEpic, instanceTerminateEpic, terminateAllInstancesEpic);
 }

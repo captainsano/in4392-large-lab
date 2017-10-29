@@ -3,10 +3,11 @@ import * as bodyParser from 'body-parser'
 
 interface AppParams {
     getState: () => object,
+    getReport: () => object,
     addTask: (args: object) => void
 }
 
-export default function createAppServer({getState, addTask}: AppParams) {
+export default function createAppServer({getState, addTask, getReport}: AppParams) {
     const server = express()
 
     server.use(bodyParser.json())
@@ -18,6 +19,10 @@ export default function createAppServer({getState, addTask}: AppParams) {
 
     server.get('/state', (req, res) => {
         res.json(getState())
+    })
+
+    server.get('/report', (req, res) => {
+        res.json(getReport())
     })
 
     return server

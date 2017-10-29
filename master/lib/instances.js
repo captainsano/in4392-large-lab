@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const R = require("ramda");
+const moment = require("moment");
 const INIT_STATE = {
     starting: {},
     running: {}
@@ -67,10 +68,10 @@ function unscheduleForTerminationInstance(instance) {
     };
 }
 exports.unscheduleForTerminationInstance = unscheduleForTerminationInstance;
-function terminateInstance(instance) {
+function terminateInstance(instance, normalTermination = true) {
     return {
         type: 'TERMINATE_INSTANCE',
-        payload: instance
+        payload: Object.assign({}, instance, { terminatedTime: moment(), normalTermination })
     };
 }
 exports.terminateInstance = terminateInstance;

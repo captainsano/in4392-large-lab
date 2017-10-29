@@ -39,7 +39,7 @@ function createScheduler(policy) {
             return Observable_1.Observable
                 .fromPromise(axios_1.default.post(`http://${instance.ipAddress}:3000/process`, task.args))
                 .timeout(TASK_TIMEOUT)
-                .mapTo(task_queue_1.finishTask(task))
+                .map(() => task_queue_1.finishTask(task))
                 .catch((e) => {
                 console.log('---> Task fail error ', e);
                 return Observable_1.Observable.of(task_queue_1.failTask(task));

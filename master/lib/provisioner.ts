@@ -127,7 +127,7 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
                             .map((a: InstanceAction) => a.payload)
                             .filter((i: Instance) => instance.id === i.id)
                     )
-                    .map(terminateInstance)
+                    .map((i: Instance) => terminateInstance(i))
             ))
     )
 
@@ -149,7 +149,7 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
                     R.toPairs
                 )(state.instances.running) as Instance[]
 
-                return Observable.of(...allRunningInstances).map(terminateInstance)
+                return Observable.of(...allRunningInstances).map((i: Instance) => terminateInstance(i))
             })
     )
 

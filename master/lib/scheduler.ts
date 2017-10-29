@@ -38,7 +38,6 @@ export default function createScheduler<S extends MasterState>(policy: Scheduler
 
                 return Observable.of({type: 'NULL'})
             })
-
     )
 
     const executorEpic = (action$: ActionsObservable<Action>, store: Store<S>) => (
@@ -59,7 +58,7 @@ export default function createScheduler<S extends MasterState>(policy: Scheduler
                     return Observable
                         .fromPromise(axios.post(`http://${instance.ipAddress}:3000/process`, task.args))
                         .timeout(TASK_TIMEOUT)
-                        .mapTo(finishTask(task))
+                        .map(() => finishTask(task))
                         .catch((e) => {
                             console.log('---> Task fail error ', e)
                             return Observable.of(failTask(task))

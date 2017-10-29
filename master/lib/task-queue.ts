@@ -77,7 +77,7 @@ export function executeTask(task: Task, instanceId: string): TaskQueueAction {
 }
 
 export function finishTask(task: Task): TaskQueueAction {
-    console.log('----> Finishing task: ', task.id)
+    console.log('----> Finishing task: ', task.id, ' at: ', moment())
     return {
         type: 'FINISH_TASK',
         payload: {
