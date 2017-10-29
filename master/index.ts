@@ -1,6 +1,7 @@
 import 'rxjs'
 import {createStore, combineReducers, applyMiddleware, Store} from 'redux'
 import {createEpicMiddleware, combineEpics} from 'redux-observable'
+import * as moment from 'moment'
 
 import {MasterState, ReportState} from './lib/types'
 import * as awsProvider from './lib/aws-provider'
@@ -13,6 +14,8 @@ import instances from './lib/instances'
 import createProvisioner from './lib/provisioner'
 import reportReducer from './lib/report-reducer'
 import createReporter from './lib/reporter'
+
+const START_TIME = moment()
 
 const APP_PORT = parseInt(process.env.PORT || '8000', 10)
 const POLICY = {
@@ -61,7 +64,9 @@ if (store) {
     const appServer = createAppServer({
         getState: () => store.getState() as MasterState,
         getReport: () => reportStore.getState() as ReportState,
-        addTask: (args) => store.dispatch(addTask(args))
+        getUptime: () => moment().valueOf() - START_TIME.valueOf(),
+        addTask: (args) => store.dispatch(addTask(args)),
+        terminateAll: () => store.dispatch({type: 'TERMINATE_ALL_INSTANCES'})
     })
 
     const server = appServer.listen(APP_PORT, () => {

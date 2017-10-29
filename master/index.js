@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 require("rxjs");
 const redux_1 = require("redux");
 const redux_observable_1 = require("redux-observable");
+const moment = require("moment");
 const awsProvider = require("./lib/aws-provider");
 const localProvider = require("./lib/local-mock-provider");
 const task_queue_1 = require("./lib/task-queue");
@@ -12,6 +13,7 @@ const instances_1 = require("./lib/instances");
 const provisioner_1 = require("./lib/provisioner");
 const report_reducer_1 = require("./lib/report-reducer");
 const reporter_1 = require("./lib/reporter");
+const START_TIME = moment();
 const APP_PORT = parseInt(process.env.PORT || '8000', 10);
 const POLICY = {
     maxRetries: parseInt(process.env.POLICY_MAXRETRIES || '5', 10),
@@ -46,7 +48,9 @@ if (store) {
     const appServer = app_server_1.default({
         getState: () => store.getState(),
         getReport: () => reportStore.getState(),
-        addTask: (args) => store.dispatch(task_queue_1.addTask(args))
+        getUptime: () => moment().valueOf() - START_TIME.valueOf(),
+        addTask: (args) => store.dispatch(task_queue_1.addTask(args)),
+        terminateAll: () => store.dispatch({ type: 'TERMINATE_ALL_INSTANCES' })
     });
     const server = appServer.listen(APP_PORT, () => {
         console.log('App server listening on port: ', APP_PORT);

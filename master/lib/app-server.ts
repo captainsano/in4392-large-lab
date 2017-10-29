@@ -4,10 +4,12 @@ import * as bodyParser from 'body-parser'
 interface AppParams {
     getState: () => object,
     getReport: () => object,
-    addTask: (args: object) => void
+    getUptime: () => number,
+    addTask: (args: object) => void,
+    terminateAll: () => void
 }
 
-export default function createAppServer({getState, addTask, getReport}: AppParams) {
+export default function createAppServer({getState, getReport, getUptime, addTask, terminateAll}: AppParams) {
     const server = express()
 
     server.use(bodyParser.json())
@@ -22,7 +24,15 @@ export default function createAppServer({getState, addTask, getReport}: AppParam
     })
 
     server.get('/report', (req, res) => {
-        res.json(getReport())
+        res.json({
+            ...getReport(),
+            uptime: getUptime()
+        })
+    })
+
+    server.get('/terminate-all', (req, res) => {
+        terminateAll()
+        res.status(200).end()
     })
 
     return server

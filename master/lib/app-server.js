@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
 const bodyParser = require("body-parser");
-function createAppServer({ getState, addTask, getReport }) {
+function createAppServer({ getState, getReport, getUptime, addTask, terminateAll }) {
     const server = express();
     server.use(bodyParser.json());
     server.post('/add', (req, res) => {
@@ -13,7 +13,11 @@ function createAppServer({ getState, addTask, getReport }) {
         res.json(getState());
     });
     server.get('/report', (req, res) => {
-        res.json(getReport());
+        res.json(Object.assign({}, getReport(), { uptime: getUptime() }));
+    });
+    server.get('/terminate-all', (req, res) => {
+        terminateAll();
+        res.status(200).end();
     });
     return server;
 }
