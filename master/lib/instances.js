@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const R = require("ramda");
+const moment = require("moment");
 const INIT_STATE = {
     starting: {},
     running: {}
@@ -19,13 +20,14 @@ function instances(state = INIT_STATE, { type, payload }) {
             return state;
         }
         case 'UNSCHEDULE_FOR_TERMINATION_INSTANCE': {
+            console.log(`unscheduling ${payload.id} out of termination`);
             if (state.running[payload.id]) {
                 return R.assocPath(['running', payload.id, 'scheduledForTermination'], false, state);
             }
             return state;
         }
         case 'TERMINATE_INSTANCE':
-            return R.dissocPath(['running', payload.id], state);
+            return R.compose(R.dissocPath(['starting', payload.id]), R.dissocPath(['running', payload.id]))(state);
         default:
             return state;
     }
@@ -49,7 +51,7 @@ exports.startInstance = startInstance;
 function runInstance(instance) {
     return {
         type: 'RUN_INSTANCE',
-        payload: instance
+        payload: Object.assign({}, instance, { readyTime: moment() })
     };
 }
 exports.runInstance = runInstance;
@@ -67,10 +69,10 @@ function unscheduleForTerminationInstance(instance) {
     };
 }
 exports.unscheduleForTerminationInstance = unscheduleForTerminationInstance;
-function terminateInstance(instance) {
+function terminateInstance(instance, normalTermination = true) {
     return {
         type: 'TERMINATE_INSTANCE',
-        payload: instance
+        payload: Object.assign({}, instance, { terminatedTime: moment(), normalTermination })
     };
 }
 exports.terminateInstance = terminateInstance;

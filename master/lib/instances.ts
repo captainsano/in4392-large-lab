@@ -1,4 +1,5 @@
 import * as R from 'ramda'
+import * as moment from 'moment'
 import {Instance, InstanceAction, InstanceRequestAction, InstanceState} from './types'
 import {Action} from 'redux';
 
@@ -35,6 +36,7 @@ export default function instances(state = INIT_STATE, {type, payload}: InstanceA
         }
 
         case 'UNSCHEDULE_FOR_TERMINATION_INSTANCE': {
+            console.log(`unscheduling ${payload.id} out of termination`)
             if (state.running[payload.id]) {
                 return R.assocPath(
                     ['running', payload.id, 'scheduledForTermination'],
@@ -47,10 +49,10 @@ export default function instances(state = INIT_STATE, {type, payload}: InstanceA
         }
 
         case 'TERMINATE_INSTANCE':
-            return R.dissocPath(
-                ['running', payload.id],
-                state
-            ) as InstanceState
+            return R.compose(
+                R.dissocPath(['starting', payload.id]),
+                R.dissocPath(['running', payload.id])
+            )(state) as InstanceState
 
         default:
             return state
@@ -75,7 +77,7 @@ export function startInstance(instance: Instance): InstanceAction {
 export function runInstance(instance: Instance): InstanceAction {
     return {
         type: 'RUN_INSTANCE',
-        payload: instance
+        payload: {...instance, readyTime: moment()}
     }
 }
 
@@ -93,9 +95,13 @@ export function unscheduleForTerminationInstance(instance: Instance): InstanceAc
     }
 }
 
-export function terminateInstance(instance: Instance): InstanceAction {
+export function terminateInstance(instance: Instance, normalTermination = true): InstanceAction {
     return {
         type: 'TERMINATE_INSTANCE',
-        payload: instance
+        payload: ({
+            ...instance,
+            terminatedTime: moment(),
+            normalTermination
+        } as Instance)
     }
 }

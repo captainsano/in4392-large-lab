@@ -8,7 +8,7 @@ import {ProvisionerPolicy, Instance, MasterState, InstanceAction} from './types'
 import {
     requestInstance, runInstance, scheduleForTerminationInstance, startInstance, terminateInstance,
     unscheduleForTerminationInstance
-} from "./instances";
+} from './instances'
 import {pickFreeInstances, pickFreeInstancesScheduledForTermination} from "./utils";
 
 const PROVISIONER_INTERVAL = 5000
@@ -48,9 +48,8 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
     )
 
     const queueThresholdProvisioningPolicyEpic = (action$: ActionsObservable<Action>, store: Store<S>) => (
-        Observable.merge(action$.filter((a: Action) => a.type.endsWith('TASK')), provisionerKickStart)
+        Observable.merge(action$.filter((a: Action) => a.type.endsWith('TASK')).debounceTime(PROVISIONER_DEBOUNCE), provisionerKickStart)
             .switchMap(() => provisionerPoll)
-            .debounceTime(PROVISIONER_DEBOUNCE)
             // .do(() => console.log('------> PROVISIONER is running'))
             .flatMap(() => {
                 const state = store.getState() as S
@@ -61,13 +60,22 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
                     R.toPairs
                 )(state.instances.running) as Instance[]
 
-                if (pendingQueueLength > policy.taskQueueThreshold) {
-                    if (allRunningInstances.length <= policy.maxVMs) {
+                const allStartingInstances = R.compose(
+                    R.map(([id, instance]) => ({...instance, id})),
+                    R.toPairs
+                )(state.instances.starting) as Instance[]
+
+                if (pendingQueueLength > policy.taskQueueThreshold ||
+                    (pendingQueueLength > 0 && allRunningInstances.length + allStartingInstances.length === 0)) {
+                    if (allRunningInstances.length + allStartingInstances.length < policy.maxVMs) {
                         return Observable.of(requestInstance())
                     } else {
                         return Observable.of({type: 'NULL'})
                     }
-                } else if (pendingQueueLength < policy.taskQueueThreshold) {
+                } else if (pendingQueueLength < policy.taskQueueThreshold || (
+                        pendingQueueLength > policy.taskQueueThreshold &&
+                        pendingQueueLength <= (allRunningInstances.length + allStartingInstances.length)
+                    )) {
                     const runningInstancesNotScheduledForTermination = R.reject(
                         (i: Instance) => i.scheduledForTermination || false
                     )(allRunningInstances)
@@ -117,18 +125,30 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
         action$
             .ofType('SCHEDULE_FOR_TERMINATION_INSTANCE')
             .map((action: InstanceAction) => action.payload)
-            .flatMap((instance: Instance) => (
-                Observable
-                    .of(instance)
-                    .delay(TERMINATION_WAIT_TIME)
-                    .takeUntil(
-                        action$
-                            .ofType('UNSCHEDULE_FOR_TERMINATION_INSTANCE')
-                            .map((a: InstanceAction) => a.payload)
-                            .filter((i: Instance) => instance.id === i.id)
-                    )
-                    .map(terminateInstance)
-            ))
+            .flatMap((instance: Instance) => {
+                // Do not schedule the last instance for termination if pending queue is not empty
+                const state = store.getState()
+                const runningInstances = R.toPairs(state.instances.running)
+                const pendingTasksLength = R.toPairs(state.taskQueue.pending).length
+
+                const shouldTerminate = !(runningInstances.length === 1 && pendingTasksLength > 0)
+                console.log('=======> should terminate: ', shouldTerminate)
+
+                if (shouldTerminate) {
+                    return Observable
+                        .of(instance)
+                        .delay(TERMINATION_WAIT_TIME)
+                        .takeUntil(
+                            action$
+                                .ofType('UNSCHEDULE_FOR_TERMINATION_INSTANCE')
+                                .map((a: InstanceAction) => a.payload)
+                                .filter((i: Instance) => instance.id === i.id)
+                        )
+                        .map((i: Instance) => terminateInstance(i))
+                } else {
+                    return Observable.of(unscheduleForTerminationInstance(instance))
+                }
+            })
     )
 
     const instanceTerminateEpic = (action$: ActionsObservable<InstanceAction>, store: Store<S>) => (
@@ -149,7 +169,7 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
                     R.toPairs
                 )(state.instances.running) as Instance[]
 
-                return Observable.of(...allRunningInstances).map(terminateInstance)
+                return Observable.of(...allRunningInstances).map((i: Instance) => terminateInstance(i))
             })
     )
 

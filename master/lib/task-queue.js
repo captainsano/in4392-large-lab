@@ -51,7 +51,7 @@ function executeTask(task, instanceId) {
 }
 exports.executeTask = executeTask;
 function finishTask(task) {
-    console.log('----> Finishing task: ', task.id);
+    console.log('----> Finishing task: ', task.id, ' at: ', moment());
     return {
         type: 'FINISH_TASK',
         payload: Object.assign({}, task, { finishTime: moment() })

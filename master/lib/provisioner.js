@@ -27,22 +27,24 @@ function createProvisioner(policy, cloudProvider) {
         .ofType('BOOTSTRAP')
         .switchMapTo(Observable_1.Observable.of(instances_1.requestInstance()).repeat(policy.minVMs))
         .take(policy.minVMs));
-    const queueThresholdProvisioningPolicyEpic = (action$, store) => (Observable_1.Observable.merge(action$.filter((a) => a.type.endsWith('TASK')), provisionerKickStart)
+    const queueThresholdProvisioningPolicyEpic = (action$, store) => (Observable_1.Observable.merge(action$.filter((a) => a.type.endsWith('TASK')).debounceTime(PROVISIONER_DEBOUNCE), provisionerKickStart)
         .switchMap(() => provisionerPoll)
-        .debounceTime(PROVISIONER_DEBOUNCE)
         .flatMap(() => {
         const state = store.getState();
         const pendingQueueLength = R.toPairs(state.taskQueue.pending).length;
         const allRunningInstances = R.compose(R.map(([id, instance]) => (Object.assign({}, instance, { id }))), R.toPairs)(state.instances.running);
-        if (pendingQueueLength > policy.taskQueueThreshold) {
-            if (allRunningInstances.length <= policy.maxVMs) {
+        const allStartingInstances = R.compose(R.map(([id, instance]) => (Object.assign({}, instance, { id }))), R.toPairs)(state.instances.starting);
+        if (pendingQueueLength > policy.taskQueueThreshold ||
+            (pendingQueueLength > 0 && allRunningInstances.length + allStartingInstances.length === 0)) {
+            if (allRunningInstances.length + allStartingInstances.length < policy.maxVMs) {
                 return Observable_1.Observable.of(instances_1.requestInstance());
             }
             else {
                 return Observable_1.Observable.of({ type: 'NULL' });
             }
         }
-        else if (pendingQueueLength < policy.taskQueueThreshold) {
+        else if (pendingQueueLength < policy.taskQueueThreshold || (pendingQueueLength > policy.taskQueueThreshold &&
+            pendingQueueLength <= (allRunningInstances.length + allStartingInstances.length))) {
             const runningInstancesNotScheduledForTermination = R.reject((i) => i.scheduledForTermination || false)(allRunningInstances);
             const diff = runningInstancesNotScheduledForTermination.length - policy.minVMs;
             if (diff > 0) {
@@ -75,14 +77,27 @@ function createProvisioner(policy, cloudProvider) {
     const instanceTerminateSchedulerEpic = (action$, store) => (action$
         .ofType('SCHEDULE_FOR_TERMINATION_INSTANCE')
         .map((action) => action.payload)
-        .flatMap((instance) => (Observable_1.Observable
-        .of(instance)
-        .delay(TERMINATION_WAIT_TIME)
-        .takeUntil(action$
-        .ofType('UNSCHEDULE_FOR_TERMINATION_INSTANCE')
-        .map((a) => a.payload)
-        .filter((i) => instance.id === i.id))
-        .map(instances_1.terminateInstance))));
+        .flatMap((instance) => {
+        // Do not schedule the last instance for termination if pending queue is not empty
+        const state = store.getState();
+        const runningInstances = R.toPairs(state.instances.running);
+        const pendingTasksLength = R.toPairs(state.taskQueue.pending).length;
+        const shouldTerminate = !(runningInstances.length === 1 && pendingTasksLength > 0);
+        console.log('=======> should terminate: ', shouldTerminate);
+        if (shouldTerminate) {
+            return Observable_1.Observable
+                .of(instance)
+                .delay(TERMINATION_WAIT_TIME)
+                .takeUntil(action$
+                .ofType('UNSCHEDULE_FOR_TERMINATION_INSTANCE')
+                .map((a) => a.payload)
+                .filter((i) => instance.id === i.id))
+                .map((i) => instances_1.terminateInstance(i));
+        }
+        else {
+            return Observable_1.Observable.of(instances_1.unscheduleForTerminationInstance(instance));
+        }
+    }));
     const instanceTerminateEpic = (action$, store) => (action$
         .ofType('TERMINATE_INSTANCE')
         .map((action) => action.payload)
@@ -93,7 +108,7 @@ function createProvisioner(policy, cloudProvider) {
         .switchMap(() => {
         const state = store.getState();
         const allRunningInstances = R.compose(R.map(([id, instance]) => (Object.assign({}, instance, { id }))), R.toPairs)(state.instances.running);
-        return Observable_1.Observable.of(...allRunningInstances).map(instances_1.terminateInstance);
+        return Observable_1.Observable.of(...allRunningInstances).map((i) => instances_1.terminateInstance(i));
     }));
     return redux_observable_1.combineEpics(provisionerBootstrapEpic, queueThresholdProvisioningPolicyEpic, requestInstanceEpic, instanceStartEpic, instanceTerminateSchedulerEpic, instanceTerminateEpic, terminateAllInstancesEpic);
 }

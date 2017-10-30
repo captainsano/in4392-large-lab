@@ -26,9 +26,10 @@ export interface Instance {
     id: string,
     ipAddress: string,
     startTime: Moment,
+    readyTime?: Moment,
     terminatedTime?: Moment,
     scheduledForTermination?: boolean,
-    normalTermination?: boolean
+    normalTermination?: boolean // for spot instances
 }
 
 export interface InstanceRequestAction extends Action {
@@ -55,4 +56,14 @@ export interface ProvisionerPolicy {
     taskQueueThreshold: number,
     minVMs: number,
     maxVMs: number
+}
+
+export interface ReportState {
+    finishedTasks: Task[],
+    terminatedInstances: Instance[]
+}
+
+export interface ReportAction extends Action {
+    type: 'REPORT_FINISHED_TASK' | 'REPORT_TERMINATED_INSTANCE',
+    payload:  Task | Instance
 }
