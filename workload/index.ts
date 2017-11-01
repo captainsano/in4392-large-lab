@@ -10,6 +10,7 @@ import exponential from './exponential'
 import spike from './spike'
 
 const FUNCTION = (process.env.FUNCTION || '').toLowerCase()
+const HOST = process.env.HOST || 'localhost'
 
 if (['constant', 'exponential', 'spike'].indexOf(FUNCTION) < 0) {
     console.log('Function not supported or unspecified')
@@ -31,7 +32,7 @@ if (FUNCTION === 'spike') chosenFunction = spike
 
 if (chosenFunction) {
     chosenFunction(urls, BASE_DELAY, TOTAL_REQUESTS, (url: string, tick: number) => {
-        axios.post('http://localhost:8000/add', {
+        axios.post(`http://${HOST}:8000/add`, {
             source: url,
             tasks: [['scale', [25]], ['rotate', [90]]]
         }).then(() => {}).catch(() => console.log('Error making request at tick: ', tick + 1))
