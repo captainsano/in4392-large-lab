@@ -32,44 +32,37 @@
 \vspace{0.2cm}
 
 \textbf{
-  \emph{Abstract}---In this report we introduce \emph{Imagely}, a cloud service for image processing. It runs on top of Amazon Web Services' barebone compute resources to provide elastic scaling capabilities and through benchmarks and experiments, we show that it can achieve a speedup of up to ?? at peak load, compared to the baseline performance of a static single compute resource. (TODO: Add more points on design and analysis)
+  \emph{Abstract}---\emph{Imagely} is a cloud service for batch image processing, designed for the specific requirements of WantCloud BV. Images are submitted by the end user, which are then processed by the service and the user is notified. It runs on Amazon Web Services (AWS) IaaS barebone compute resources to provide elastic scaling capabilities and its system design adapts the standard master-worker batch processing reference architecture pattern provided by AWS. The scheduler and provisioner are written in NodeJS in reactive style. We run three workloads each on three combinations of VM and scheduling policies with a hundred images. We show that it can achieve a speedup of up to ?? at peak load, compared to the baseline performance of a constant, pre-allocated compute resources. [ADD ONE MAIN RESULT]
 }
 
 \section{Introduction}
 
-WantCloud BV is an image processing company and are pioneers in processing raw satellite images to a standard image formats, consumable by the end-user on the web browser. As WantCloud BV is expanding into other domains and 
-adding new customers rapidly, their existing solution is not able to cope up with peak traffic demands and
- maintain the service level agreements (SLAs). Thus, WantCloud BV is evaluating a IaaS-based solution that
-  can scale with the demand.
+WantCloud BV is a popular image processing company and are pioneers in converting raw satellite images to standard image formats consumable by users on the web browser. As the company is expanding into other domains and 
+adding new customers rapidly, their existing deployment unable to cope up with peak traffic demands and
+ maintain service level agreements (SLAs). Thus, WantCloud BV is evaluating an IaaS-based solution that
+ can scale with the demand.
 
-The proposed system utilizes Amazon Web Services (AWS)~\cite{aws} IaaS cloud service provider's compute instance, EC2.
-AWS provides low-level SDKs for provisioning and revoking virtual machines (VMs) on which we place 
-the workloads. We also utilize Amazon Machine Images (AMIs) for pre-packaging the application code,
-configuration information and the operating system for the virtual machine. For image processing and conversion, we use the ImageMagick~\cite{imagemagick} program. We wrap ImageMagick with a thin HTTP server written in NodeJS~\cite{nodejs}, which invokes ImageMagick as a child process and uses stdin/stdout pipes for input/output. The VM which performs image processing is known as
-the worker node. For analysis purposes, we restrict the scope of worker to scaling down, rotating and converting the
+The proposed system utilizes Amazon Web Services (AWS)~\cite{aws} IaaS cloud service provider's compute instance, EC2 (Elastic Cloud Compute) for providing on-demand provisioning of compute capacity to process the workloads.
+We design a custom provisioner and scheduler using the AWS low-level SDK EC2 API for requesting and releasing instances (VMs).
+We also utilize Amazon Machine Images (AMIs) for pre-packaging the application code,
+configuration information and the operating system for the instance to save time during its launch. For image processing and conversion, we use the ImageMagick~\cite{imagemagick} program. We wrap ImageMagick with a thin HTTP server written in NodeJS~\cite{nodejs}, which forks ImageMagick as a child process and performs read/write through stdin/stdout pipes, the instances which perform image processing are known as
+the workers. For analysis purposes, we restrict the scope of the worker to scaling down, rotating and converting the
 image from TIFF~\cite{rfc3302} to JPEG format~\cite{jpeg}.
 
-The proposed solution consists of a master node, which accepts the image processing task requests via HTTP and
-spawns multiple workers as per the policy, balances and allocates tasks them and also monitors the overall 
-system statistics. The total time it takes to perform tasks on an image by the worker is known as the \emph{makespan} of a given job. VMs are leased on an hourly basis, thus we also measure the cost for a given job and analyse the 
-tradeoffs in adding more VMs to the system.
+The system design follows the AWS reference architecture for batch processing~\cite{aws_batch}, except that we have
+implemented custom reactive scheduler and provisioner and have placed all the task queues and resource management responsibilities on the master node. The master node accepts the image processing task requests via HTTP and launches multiple worker nodes as per the number of tasks based on the given policy, balances and allocates tasks them and also monitors the progress. It also keeps building a report on completion of each task and launch/release of each instance during its lifetime. The policy targets the provisioner with parameters for minimum and maximum
+number of workers to launch and the scaling-up decision threshold.
 
-To determine a baseline, we run a test workload on a single VM and to analyse the scaling capability of the system,
-we run workloads with varied arrival time distributions to simulate realistic scenarios.
+The test workload is a collection of 100 satellite images from Landsat satellite, with file sizes ranginge from 40-60 MB. To determine the baseline (current) effort required, we run the workload on a static VM deployment and to analyse the scaling capability of the proposed system, we test the workload with two different thershold policies to evaluate the provisioner. The workload itself is varied with three exponential Poisson mean inter-arrival time distributions to simulate realistic request patterns.
 
-In section~\ref{application}, additional background information on the application is provided. In section~\ref{system_design} we illustrate the design of the system with focus on specific aspects pertaining to
+In section~\ref{application}, additional background information on the application is provided. In section~\ref{system_design} we illustrate the design of the system in detail with focus on specific aspects pertaining to
 WantCloud's requirements and in section~\ref{experiments} we present the experiments conducted along with the
-results and analysis. We conclude the report in section~ref{conclusion} with a short discussion on the findings
-and potential improvements.
+results and analysis. We conclude the report in section~ref{conclusion} with a short discussion on the findings and potential improvements.
 
 \section{Application} \label{application}
 
-The web-based application which we build takes jobs defined in JSON format~\cite{rfc7159}, which point to a image URL and defines
-a sequence of basic image manipulation operations such as scaling, rotation and finally file format conversion from
-TIFF to JPEG.  We internally use the ImageMagick program for processing the image and it is invoked by a NodeJS web
-server. The end-user requests reach the master node, which queues the job, picks an idle VM and allocates the job
-to it, based on the allocation policy. In case an idle VM is not found, the provisioning policy guides the master
-to provision a new VM and add it to the worker pool.
+The web-based application receives tasks from end-users in JSON format~\cite{rfc7159}, which point to a source image URL and defines a sequence of image manipulation operations such as scaling, rotation and finally file format conversion from TIFF to JPEG. This JSON request is forwarded to a worker in the resource pool by the master node.  Internally, ImageMagick program is used for processing the image and it is invoked by a the worker's NodeJS web server. The end-user requests reach the master node, which queues the job, picks an idle VM and allocates the job
+to it, based on the allocation policy. In case an idle VM is not found, the provisioning policy requests AWS for a new instance and adds it to the worker pool when it becomes ready.
 
 \subsection{Requirements}
 
