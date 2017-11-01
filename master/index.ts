@@ -1,6 +1,7 @@
 import 'rxjs'
-import {createStore, combineReducers, applyMiddleware, Store} from 'redux'
-import {createEpicMiddleware, combineEpics} from 'redux-observable'
+import {Observable} from 'rxjs'
+import {createStore, combineReducers, applyMiddleware, Store, Action} from 'redux'
+import {createEpicMiddleware, combineEpics, ActionsObservable} from 'redux-observable'
 import * as moment from 'moment'
 import * as R from 'ramda'
 
@@ -46,10 +47,17 @@ const provider = (process.env.PROVIDER || '').toLowerCase() === 'local' ? {
     terminateInstance: awsProvider.terminateInstance
 }
 
+const loggerEpic = (action$: ActionsObservable<Action>) => (
+    action$
+        .do((a: Action) => console.log('--> Action: ', a))
+        .switchMapTo(Observable.from([]))
+)
+
 const rootEpic = combineEpics(
     createScheduler(SCHEDULER_POLICY),
     createProvisioner(PROVISIONER_POLICY, provider),
-    createReporter(reportStore as Store<ReportState>)
+    createReporter(reportStore as Store<ReportState>),
+    // loggerEpic
 )
 
 const epicMiddleware = createEpicMiddleware(rootEpic)

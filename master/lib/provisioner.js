@@ -10,7 +10,7 @@ const PROVISIONER_INTERVAL = 5000;
 const PROVISIONER_DEBOUNCE = 1000;
 const HEALTH_CHECK_INTERVAL = 1000;
 const INSTANCE_READY_TIMEOUT = 60 * 1000;
-const TERMINATION_WAIT_TIME = 10 * 1000;
+const TERMINATION_WAIT_TIME = 30 * 1000;
 const healthCheck = (i) => (Observable_1.Observable
     .interval(HEALTH_CHECK_INTERVAL)
     .flatMap(() => (Observable_1.Observable.fromPromise(axios_1.default.get(`http://${i.ipAddress}:3001/health`))
@@ -34,25 +34,15 @@ function createProvisioner(policy, cloudProvider) {
         const pendingQueueLength = R.toPairs(state.taskQueue.pending).length;
         const allRunningInstances = R.compose(R.map(([id, instance]) => (Object.assign({}, instance, { id }))), R.toPairs)(state.instances.running);
         const allStartingInstances = R.compose(R.map(([id, instance]) => (Object.assign({}, instance, { id }))), R.toPairs)(state.instances.starting);
-        if (pendingQueueLength > policy.taskQueueThreshold ||
-            (pendingQueueLength > 0 && allRunningInstances.length + allStartingInstances.length === 0)) {
-            if (allRunningInstances.length + allStartingInstances.length < policy.maxVMs) {
-                return Observable_1.Observable.of(instances_1.requestInstance());
-            }
-            else {
-                return Observable_1.Observable.of({ type: 'NULL' });
-            }
+        const allInstancesLength = allRunningInstances.length + allStartingInstances.length;
+        const freeInstances = utils_1.pickFreeInstances(state);
+        const terminationScheduleActions = Observable_1.Observable.of(...freeInstances).take(1).map(instances_1.scheduleForTerminationInstance);
+        if ((pendingQueueLength > policy.taskQueueThreshold ||
+            (pendingQueueLength > 0 && allInstancesLength === 0)) &&
+            allInstancesLength < policy.maxVMs) {
+            return terminationScheduleActions.concat(Observable_1.Observable.of(instances_1.requestInstance()));
         }
-        else if (pendingQueueLength < policy.taskQueueThreshold || (pendingQueueLength > policy.taskQueueThreshold &&
-            pendingQueueLength <= (allRunningInstances.length + allStartingInstances.length))) {
-            const runningInstancesNotScheduledForTermination = R.reject((i) => i.scheduledForTermination || false)(allRunningInstances);
-            const diff = runningInstancesNotScheduledForTermination.length - policy.minVMs;
-            if (diff > 0) {
-                const freeInstances = utils_1.pickFreeInstances(state);
-                return Observable_1.Observable.of(...freeInstances).take(diff).map(instances_1.scheduleForTerminationInstance);
-            }
-        }
-        return Observable_1.Observable.of({ type: 'NULL' });
+        return terminationScheduleActions;
     }));
     const requestInstanceEpic = (action$, store) => (action$
         .ofType('REQUEST_INSTANCE')

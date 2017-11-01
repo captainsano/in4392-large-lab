@@ -27,7 +27,7 @@ function createScheduler(policy) {
     const executorEpic = (action$, store) => (action$
         .ofType('EXECUTE_TASK')
         .flatMap((action) => {
-        console.log('---> Executing task \n', action.payload);
+        // console.log('---> Executing task \n', action.payload)
         const state = store.getState();
         const task = action.payload;
         if (task.retries >= policy.maxRetries) {

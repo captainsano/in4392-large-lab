@@ -8,6 +8,7 @@ const constant_1 = require("./constant");
 const exponential_1 = require("./exponential");
 const spike_1 = require("./spike");
 const FUNCTION = (process.env.FUNCTION || '').toLowerCase();
+const HOST = process.env.HOST || 'localhost';
 if (['constant', 'exponential', 'spike'].indexOf(FUNCTION) < 0) {
     console.log('Function not supported or unspecified');
     process.exit(1);
@@ -25,10 +26,10 @@ if (FUNCTION === 'spike')
     chosenFunction = spike_1.default;
 if (chosenFunction) {
     chosenFunction(urls, BASE_DELAY, TOTAL_REQUESTS, (url, tick) => {
-        axios_1.default.post('http://localhost:8000/add', {
+        axios_1.default.post(`http://${HOST}:8000/add`, {
             source: url,
             tasks: [['scale', [25]], ['rotate', [90]]]
-        }).then(() => { }).catch(() => console.log('Error making request at tick: ', tick));
+        }).then(() => { }).catch(() => console.log('Error making request at tick: ', tick + 1));
     })
         .subscribe((i) => {
         console.log(`${i + 1}\t${moment().valueOf() - START_TIMESTAMP}`);

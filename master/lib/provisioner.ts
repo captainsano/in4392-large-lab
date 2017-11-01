@@ -65,29 +65,18 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
                     R.toPairs
                 )(state.instances.starting) as Instance[]
 
-                if (pendingQueueLength > policy.taskQueueThreshold ||
-                    (pendingQueueLength > 0 && allRunningInstances.length + allStartingInstances.length === 0)) {
-                    if (allRunningInstances.length + allStartingInstances.length < policy.maxVMs) {
-                        return Observable.of(requestInstance())
-                    } else {
-                        return Observable.of({type: 'NULL'})
-                    }
-                } else if (pendingQueueLength < policy.taskQueueThreshold || (
-                        pendingQueueLength > policy.taskQueueThreshold &&
-                        pendingQueueLength <= (allRunningInstances.length + allStartingInstances.length)
-                    )) {
-                    const runningInstancesNotScheduledForTermination = R.reject(
-                        (i: Instance) => i.scheduledForTermination || false
-                    )(allRunningInstances)
+                const allInstancesLength = allRunningInstances.length + allStartingInstances.length
 
-                    const diff = runningInstancesNotScheduledForTermination.length - policy.minVMs
-                    if (diff > 0) {
-                        const freeInstances = pickFreeInstances(state)
-                        return Observable.of(...freeInstances).take(diff).map(scheduleForTerminationInstance)
-                    }
+                const freeInstances = pickFreeInstances(state)
+                const terminationScheduleActions = Observable.of(...freeInstances).take(1).map(scheduleForTerminationInstance)
+
+                if ((pendingQueueLength > policy.taskQueueThreshold ||
+                    (pendingQueueLength > 0 && allInstancesLength === 0)) &&
+                    allInstancesLength < policy.maxVMs) {
+                    return terminationScheduleActions.concat(Observable.of(requestInstance()))
                 }
 
-                return Observable.of({type: 'NULL'})
+                return terminationScheduleActions
             })
     )
 

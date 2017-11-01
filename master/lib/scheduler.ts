@@ -43,7 +43,7 @@ export default function createScheduler<S extends MasterState>(policy: Scheduler
         action$
             .ofType('EXECUTE_TASK')
             .flatMap((action: TaskQueueAction) => {
-                console.log('---> Executing task \n', action.payload)
+                // console.log('---> Executing task \n', action.payload)
                 const state = store.getState() as S
                 const task = action.payload as Task
 
