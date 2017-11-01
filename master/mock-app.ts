@@ -4,6 +4,8 @@ import * as bodyParser from 'body-parser'
 const APP_PORT = parseInt(process.env.APP_PORT || '3000', 10)
 const HEALTH_PORT = parseInt(process.env.HEALTH_PORT || '3001', 10)
 
+const TASK_DELAY = parseInt(process.env.TASK_DELAY || '5000', 10)
+
 const app = express()
 
 app.use(bodyParser.json())
@@ -12,7 +14,7 @@ app.post('/process', (_, res) => {
     setTimeout(() => {
         console.log('Responding')
         res.json([10, 0])
-    }, 5000)
+    }, TASK_DELAY)
 })
 
 
