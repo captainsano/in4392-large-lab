@@ -488,6 +488,10 @@ performance-now@^2.1.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/performance-now/-/performance-now-2.1.0.tgz#6309f4e0e5fa913ec1c69307ae364b4b377c9e7b"
 
+poisson-process@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/poisson-process/-/poisson-process-1.0.0.tgz#ecf5b848d57d38faf10abb7a051fe39134c9163e"
+
 punycode@^1.4.1:
   version "1.4.1"
   resolved "https://registry.yarnpkg.com/punycode/-/punycode-1.4.1.tgz#c0d5a63b2718800ad8e1eb0fa5269c84dd41845e"
