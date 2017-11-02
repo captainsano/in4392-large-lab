@@ -1,6 +1,8 @@
 \documentclass[a4paper]{IEEEtran}
 
-\usepackage{lipsum}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\graphicspath{{illustrations/}}
 
 \begin{document}
 
@@ -53,16 +55,16 @@ The system design follows the AWS reference architecture for batch processing~\c
 implemented custom reactive scheduler and provisioner and have placed all the task queues and resource management responsibilities on the master node. The master node accepts the image processing task requests via HTTP and launches multiple worker nodes as per the number of tasks based on the given policy, balances and allocates tasks them and also monitors the progress. It also keeps building a report on completion of each task and launch/release of each instance during its lifetime. The policy targets the provisioner with parameters for minimum and maximum
 number of workers to launch and the scaling-up decision threshold.
 
-The test workload is a collection of 100 satellite images from Landsat satellite, with file sizes ranginge from 40-60 MB. To determine the baseline (current) effort required, we run the workload on a static VM deployment and to analyse the scaling capability of the proposed system, we test the workload with two different thershold policies to evaluate the provisioner. The workload itself is varied with three exponential Poisson mean inter-arrival time distributions to simulate realistic request patterns.
+The test workload is a collection of 100 TIFF images from NASA's publicly available Landsat satellite image repository, file sizes ranging from 40-60 MB. To determine the baseline (current) effort required, we run the workload on a static VM deployment and to analyse the scaling and scheduling capability of the cloud solution, we test the workload with two different threshold policies. The workload itself is varied with three exponential Poisson mean inter-arrival time distributions to simulate realistic request patterns.
 
-In section~\ref{application}, additional background information on the application is provided. In section~\ref{system_design} we illustrate the design of the system in detail with focus on specific aspects pertaining to
-WantCloud's requirements and in section~\ref{experiments} we present the experiments conducted along with the
+In \autoref{application}, additional background information on the application is provided. In \autoref{system_design} we illustrate the design of the system in detail with focus on specific aspects pertaining to
+WantCloud's requirements and in \autoref{experiments} we present the experiments conducted along with the
 results and analysis. We conclude the report in section~ref{conclusion} with a short discussion on the findings and potential improvements.
 
 \section{Application} \label{application}
 
-The web-based application receives tasks from end-users in JSON format~\cite{rfc7159}, which point to a source image URL and defines a sequence of image manipulation operations such as scaling, rotation and finally file format conversion from TIFF to JPEG. This JSON request is forwarded to a worker in the resource pool by the master node.  Internally, ImageMagick program is used for processing the image and it is invoked by a the worker's NodeJS web server. The end-user requests reach the master node, which queues the job, picks an idle VM and allocates the job
-to it, based on the allocation policy. In case an idle VM is not found, the provisioning policy requests AWS for a new instance and adds it to the worker pool when it becomes ready.
+The web-based application receives tasks from end-users in JSON format~\cite{rfc7159}, which point to a source image URL and defines a sequence of image manipulation operations such as scaling, rotation and finally file format conversion from TIFF to JPEG. This JSON request is forwarded to an idle worker in the resource pool by the master node. Internally, ImageMagick program is used for processing the image and it is forked by the worker's NodeJS web server. The application is I/O bound during retrieval of the source image and writing the result to AWS S3 storage (the NodeJS web server handles all I/O), CPU and memory intensive when it performs the actual image manipulation and conversion. The worker declares the task as a failure if the above three steps encounter an error or the entire 
+task does not complete within 30 seconds (parameterized).
 
 \subsection{Requirements}
 
@@ -79,202 +81,235 @@ In order to replace WantCloud's current system, the following requirements are t
   on metrics to aid future decisions.
 \end{itemize}
 
+\begin{figure}[tbp]
+  \centering
+    \includegraphics[width=\columnwidth]{system-design.png}
+  \caption{Overview of system design.}
+  \label{fig:overview_system_design}
+\end{figure}
+
 \section{System Design} \label{system_design}
 
-At a high level, the system follows a simple client-server model where end-users send job requests to the server
-in JSON, specifying the image source and the manipulations to be performed. The server accepts the requests, creates
-a job and adds it to the pending job queue. The job is then dispatched by the scheduler to an available worker at a later point in time. The workers finish the job and intimate the end-user via E-mail about the job completion and 
-where the result could be found, simultaneously informing the master about the job completion and awaiting the next job.
+As mentioned in \autoref{application}, the server (master node) accepts the tasks and adds it to the pending task queue. The task is then allocated by the scheduler to an available worker instance at the next scheduling cycle. The workers finish the task and notify the end-user via E-mail about the job completion or failure, the stored location of the result and returns control to the master with usage info.
 
-\subsection{Overview}
+\subsection{Overview} \label{system_design_overview}
 
- The server consists of the following components:
+The system, illustrated in \autoref{fig:overview_system_design} consists of the following components, placed in the master node:
 
  \begin{itemize}
    \item \emph{Listener}: The NodeJS server, which accepts client requests through HTTP, parses it, creates a 
-   corresponding internal job representation and adds it to the pending job queue.
-   \item \emph{Scheduler}: The scheduler looks for a free VM in the resource pool and schedules a pending job
-   onto the identified VM according to the given job allocation policy.
-   \item \emph{PoolManager}: This component which manages the provisioning and revocation of VMs in the resource 
-   pool according to the given scaling policy.
-   \item \emph{Monitor}: The monitor is responsible for monitoring the finished/failed jobs, health of the instances
-    and maintain record, which is served at a HTTP endpoint, summarized for metrics.
+   corresponding internal task representation and adds it to the pending task queue.
+   \item \emph{Scheduler}: The scheduler runs periodically and matches tasks in the pending queue to free
+   worker instances in the resource pool.
+   \item \emph{Provisioner}: The provisioner manages the request and release of worker instances in the resource 
+   pool according to the given policy.
+   \item \emph{Supervisor}: The supervisor is responsible for bootstrapping the system, monitoring the finished/failed tasks, health of the instances, maintain an audit log of all the tasks and instances to generate a report when requested and finally perform cleanup and release of instances on unexpected shutdown (SIGINT, SIGTERM)
+   if possible\footnote{During bootstrap, it queries AWS for any existing workers adds them to the resource pool.}.
  \end{itemize}
 
-The implementation of the scheduler and the pool manager is generic such that it is trivial to port it to other 
-cloud providers by interfacing with the corresponding SDKs or APIs. The various policies are also defined in JSON
-format and the system is extensible such that the policies can be dynamically swapped through HTTP endpoints.
-
 \subsection{Resource Management Architecture}
+ 
+\begin{figure}[bp]
+  \centering
+    \includegraphics[width=\columnwidth]{resource-management.png}
+  \caption{Resource management architecture with message flows.}
+  \label{fig:resource_management}
+\end{figure}
 
-The system comprises of the following concepts which interact to achieve efficient resource management:
+The components listed in \autoref{system_design_overview} each have their own life cycle and associated events.
+Since the we follow the reactive pattern, we illustrate the resource management architecture by tracing the execution
+ of a task through the system, handled by the various components across phases listed below and in \autoref{fig:resource_management}.
 
 \begin{enumerate}
-  \item \emph{Job}: As soon as the job moves from the pending queue to the active queue, it is submitted to the worker, which performs the following three steps,
-  \begin{enumerate}
-    \item Downloading the source image.
-    \item Execution of image manipulation and conversion.
-    \item Writing the output image to data store.
-  \end{enumerate} 
-  The above steps, in addition to the time taken in submitting and receiving the completion notification by master
-  is counted into the job's makespan. When the job is marked as finished, it is removed from the active queue
-  and reporting information such as the finishTime and the ID of the instance which performed the job is recorded
-  and stored by the monitor module. In case a job fails or does not finish within the given timeout period, the 
-  job is again added to the pending queue with an incremented retry count, which has a policy-defined upper limit.
+  \item \emph{Bootstrap}: This phase marks the start of the system, before the arrival of tasks. The supervisor starts the scheduler, provisioner and the listener and 
+  broadcasts a \textsc{Bootstrap} event which the components listen to and perform initial setup activities if any. The supervisor
+  also invokes the AWS API with a \textsc{Describe} call to get a list of already started workers if any, this is essential to prevent
+  orphaned nodes in case the master restarts for failure recovery.
 
-  \item \emph{Worker Nodes}: In AWS, after a request for a new VM instance is made, it enters the \textsc{PENDING}
-  state and it is usable only when it reaches the \textsc{RUNNING} state. However, at the running state, additional
-  setup needs to be performed in order to start executing our business logic, at which point the VM is said to be
-  completely ready and usable. We reduce the time required for the VM to be ready by booting using pre-defined
-  VM images, provided as a service by AWS, AMI~\cite{aws-ami}. The worker application implements a health check
-  endpoint, which returns the cpu and memory stats. The successful response of this endpoint indicates that the
-  worker is ready to accept job requests.
+  \item \emph{Scheduling and Allocation}: The listener listens for incoming tasks from end-users and adds it to the pending queue
+  with the \textsc{Add\_Task} event by marking the arrival time. The scheduler is invoked periodically to pick
+  tasks from the pending queue, pick free instances from the worker pool, match the two and publish the event \textsc{Execute\_Task}.
+  Another part of the scheduler asynchronously listens to \textsc{Execute\_Task}, invokes the worker node, waits till 
+  the task is finished/failed and adds it to the pending queue again on failure. The allocation of jobs to workers
+  is influenced by three policies -- priority of tasks in the pending queue, criteria of allocation to a worker instance and
+  the maximum number of retries for a failed task.
 
-  The master node, asynchronously requests for a new worker instance and polls the health check endpoint of
-  the VM until it responds, to determine its readiness. Once the worker is ready, it is added to the worker resource
-  pool. If the worker is not able to reach the ready state within 1 minute, it is terminated.
+  \item \emph{Provisioning}: The provisioner is also invoked periodically and performs two duties -- pick free instances from the 
+  resource pool for termination, request for a new instance based on the given policy. As soon as we request the AWS API
+  for a new instance, we repeatedly hit the health check HTTP endpoint of the worker application to determine if its ready
+  \footnote{This is possible because AWS allocates a private IP address to the instance as soon as the request is made. In case this 
+  is not possible with the cloud provider, we additionally wait for the IP address to be allocated before beginning health checks.}.
+  If it is ready before a timeout, it is added to the worker pool else terminated immediately. Note that in regular cases we do not terminate immediately
+  instead we first schedule a worker for termination in the future with \textsc{Schedule\_For\_Termination} event, to prevent thrashing.
+  A separate part of the scheduler listens to this event, waits for the scheduled time and then releases instance by calling AWS API, however during the
+  wait, it also intercepts any calls to request for new instance, cancels the termination schedule and adds the instance back to the pool.
+  The policies applied to provisioning are the minimum/maximum number of instances to maintain, queue threshold for scaling
+  decisions, and the worker instance type to launch and its placement.
 
-  \item \emph{Scheduling}: \label{scheduling} The scheduler is invoked periodically to perform the following tasks,
-  \begin{enumerate}
-    \item Count the available worker instances.
-    \item Pick as many jobs from the pending queue as there are worker instances (this could be lesser), 
-    prioritized by earliest arrival time and retry count.
-    \item If there are lesser jobs than workers, mark the surplus workers for termination, otherwise, request
-    provisioner for an additional worker.
-    \item Move matched jobs to active queue, asynchronously send job request to workers and monitor for completion.
-    \item When a job completion notification is received, move the job out of the active queue and let monitor record the event. If a job fails, it is added back to the execution queue with incremented retry count.
-  \end{enumerate}
+  \item \emph{Termination and Reliability}: During the termination phase, the supervisor shuts down each instance in
+  the resource pool with a \textsc{Terminate\_All} call. The reliability of the system is ensured by configuring auto-restart
+  of the master process in the host operating system and running it as a daemon process. The supervisor also maintains
+  an audit trail of the system, which can be retrieved via an HTTP endpoint for inspection. Since the system is
+  single threaded we make sure that the queue and resource pool data structures are maintained in a single
+  immutable store and updated only via invocation of events.
+  
+  To determine the health of the instances, when a task fails the supervisor runs a health check on the instance
+  on which the task failed. The failure of the health check leads to immediate termination of the instance.
 
-  Note that the scheduler incrementally requests for new instances at each round. Also,
-  the additional instances are not terminated until the next round by the provisioner, in case they are required again by the system. This avoid thrashing of VM provisioning activity.
-
-  \item \emph{Reliability}: As mentioned in the previous point, scheduling already takes care of 
-  retrying failed tasks. As far as the master node is concerned, the entire system state, including
-  the statistic is held in a global immutable container, which can be easily checkpointed. Although
-  we have not done it for feasibility reasons, the master itself could be replicated and deployed
-  in different availability zones and the traffic could be evenly distributed.
 \end{enumerate}
 
 \subsection{System Policies}
 
-In the system, we have implemented one allocation policy and two provisioning policies.
+In the system, we have implemented one scheduling policy and one allocation policy listed below.
 
 \begin{enumerate}
-  \item \emph{Allocation}: The scheduler implements the first come, first serve (FCFS) policy.
-  It picks the job with the earliest arrival time and maximum retry count for allocation.
+  \item \emph{Scheduling}: The scheduler implements the first come, first serve (FCFS) policy.
+  It picks the task with the earliest arrival time and maximum retry count for execution on the next available
+  worker instance.
 
-  \item \emph{Provisioning}: Provisioning policies fall under two classes, \textsc{Static} and \textsc{Dynamic}. We implement the \textsc{Constant-5} static policy where the entire workload
-  is handled by a constant number of workers (count 5) and under the dynamic class, we implement
-  \textsc{On-Demand Single VM (OD-S)}, which allocates one VM per job and releases the VM after job completion plus a wait time (10 seconds in our case).
+  \item \emph{Provisioning}: We implement \textsc{On-Demand Single VM (OD-S)} policy, which allocates 
+  one VM per job and releases the VM after job completion plus a wait time (10 seconds in our case). The provisioning
+  of new instances is taken when the pending task queue length crosses the given threshold.
 
   The configurable parameters of the OD-S policy are,
     \begin{itemize}
       \item \emph{min-vms}: The minimum number of VMs the system must have at any point.
       \item \emph{max-vms}: The total number of VMs the system can provision at most.
-      \item \emph{threshold}: The trigger value for provisioning activity, in pending queue length.
+      \item \emph{threshold}: The pending queue length at which the provisioner is allowed to start a new instance. 
     \end{itemize} 
 
-  When the pending queue length falls below the threshold, the scheduler marks instances to be
+  \item \emph{Progress Condition}: The system however ensures that a minimum of 1 instance is running in case there are 
+  tasks in the pending queue irrespective of the threshold policy. 
+
+  \item \emph{Termination}: When the pending queue length falls below the threshold, the scheduler marks instances to be
   terminated and the provisioner executes the termination after the wait period.
 \end{enumerate}
 
-\section{Experimental Results} \label{experiments}
+The components of the system intercept events and lookup the central immutable store in order to enforce the policies. 
+This flexibility enables us to implement various other policies or combinations of by consuming the entire state of the 
+system at any point in time. The system parameters are summarized in \autoref{table:system_params}, * indicates
+that we have varied the value according to experiments in the following section.
 
-We perform all the experiments on the AWS cloud platform, restricted to a single region North Virgina (US-East-1) with default availability zone and the default virtual private cloud settings.
-A custom security group is used for exposing ports 8000 (master server), 3000 (worker server) and 3001 (worker health check) for inbound TCP (HTTP) traffic.
+\begin{table}[tbp]
+  \centering
+  \begin{tabular}{|r|r|}
+    \hline
+     MAX\_RETRIES & 5 \\
+     MIN\_VMS & * \\
+     MAX\_VMS & * \\
+     THRESHOLD & * \\
+     MAX\_RETRIES & 5 \\
+     SCHEDULER\_INTERVAL & 5s \\
+     TASK\_TIMEOUT & 25s \\
+     PROVISIONER\_INTERVAL & 5s \\
+     HEALTH\_CHECK\_INTERVAL & 1s \\
+     INSTANCE\_READY\_TIMEOUT & 60s \\
+     TERMINATION\_WAIT\_TIME & 10s \\
+     \hline
+  \end{tabular}
+  \vspace{0.25cm}
+  \caption{System parameters and values in implementation.}
+  \label{table:system_params}
+\end{table}
 
-\subsection{Experimental Setup}
 
- We have extended our custom AMI from the base public Ubuntu image provided by Amazon (id = ami-cd0f5cb6). Workloads have been created from the publicly available image files of NASA's 
- Landsat-I satellite (x images, total y MB). The workloads are varied by arrival time distribution in order to evaluate the provisioning policies. Each job in the workload requests the given image
- to be scaled down to 25\% of the original size, rotated by 90 degrees clockwise and converted to
-  JPEG. We generate and send the workloads to the system using custom scripts. The instance type 
-  we use for both master and worker is m3.medium (general purpose compute, vcpu=1 and memory=3.75Gb).
+% \section{Experimental Results} \label{experiments}
 
-\subsection{Experiments}
+% We perform all the experiments on the AWS cloud platform, restricted to a single region North Virgina (US-East-1) with default availability zone and the default virtual private cloud settings.
+% A custom security group is used for exposing ports 8000 (master server), 3000 (worker server) and 3001 (worker health check) for inbound TCP (HTTP) traffic.
 
-The goal of our experiments is to measure various workload execution and VM metrics on running the
- static policy and the dynamic policies and analyse the results to understand the inherent
- tradeoffs in the elasticity of cloud environments. \footnote{TODO: for each experiment, list
-  \emph{Charged-time}, \emph{Charged-cost} and \emph{Service metrics of the experiment}
-}
+% \subsection{Experimental Setup}
+
+%  We have extended our custom AMI from the base public Ubuntu image provided by Amazon (id = ami-cd0f5cb6). Workloads have been created from the publicly available image files of NASA's 
+%  Landsat-I satellite (x images, total y MB). The workloads are varied by arrival time distribution in order to evaluate the provisioning policies. Each job in the workload requests the given image
+%  to be scaled down to 25\% of the original size, rotated by 90 degrees clockwise and converted to
+%   JPEG. We generate and send the workloads to the system using custom scripts. The instance type 
+%   we use for both master and worker is m3.medium (general purpose compute, vcpu=1 and memory=3.75Gb).
+
+% \subsection{Experiments}
+
+% The goal of our experiments is to measure various workload execution and VM metrics on running the
+%  static policy and the dynamic policies and analyse the results to understand the inherent
+%  tradeoffs in the elasticity of cloud environments. \footnote{TODO: for each experiment, list
+%   \emph{Charged-time}, \emph{Charged-cost} and \emph{Service metrics of the experiment}
+% }
  
-\subsubsection{Baseline}
+% \subsubsection{Baseline}
 
-We determine the makespan of the three workloads on a single unit (SU) instance to analyze 
-the relative speedups and cost-tradeoff in later experiments.
+% We determine the makespan of the three workloads on a single unit (SU) instance to analyze 
+% the relative speedups and cost-tradeoff in later experiments.
 
-\subsubsection{Overheads}
+% \subsubsection{Overheads}
 
-We identify a major overhead in the system due to the time taken for a newly launched VM to 
-reach the ready state. To measure this, we repeatedly request, wait till ready and release a 
-single VM instance for 25 times.
+% We identify a major overhead in the system due to the time taken for a newly launched VM to 
+% reach the ready state. To measure this, we repeatedly request, wait till ready and release a 
+% single VM instance for 25 times.
 
-\subsubsection{Provisioning Policy}
+% \subsubsection{Provisioning Policy}
 
-We exercise three workload variants, linear, bursty and poisson across the three allocation policies,
+% We exercise three workload variants, linear, bursty and poisson across the three allocation policies,
 
-\begin{itemize}
-  \item \textsc{CONSTANT-5}, constantly 5 VMs.
-  \item \textsc{OD-S-0}, threshold set to 0, 2 to 20 VMs.
-  \item \textsc{OD-S-5}, threshold set to 5, 2 to 20 VMs.
-\end{itemize}
+% \begin{itemize}
+%   \item \textsc{CONSTANT-5}, constantly 5 VMs.
+%   \item \textsc{OD-S-0}, threshold set to 0, 2 to 20 VMs.
+%   \item \textsc{OD-S-5}, threshold set to 5, 2 to 20 VMs.
+% \end{itemize}
 
-\subsubsection{Utilization}
+% \subsubsection{Utilization}
 
-Utilization is the ratio of the total time spent by the workers in executing the jobs to the
-total lifetime (including boot time) of the workers, described by equation~\ref{eq:utilization}.
+% Utilization is the ratio of the total time spent by the workers in executing the jobs to the
+% total lifetime (including boot time) of the workers, described by equation~\autoref{eq:utilization}.
 
-\begin{equation} \label{eq:utilization}
-  Utilization = \frac{\sum T_{execution}}{\sum T_{lifetime}}
-\end{equation}
+% \begin{equation} \label{eq:utilization}
+%   Utilization = \frac{\sum T_{execution}}{\sum T_{lifetime}}
+% \end{equation}
 
-\subsubsection{Speedup vs Cost Tradeoff}
+% \subsubsection{Speedup vs Cost Tradeoff}
 
-We summarize the results obtained from the previous experiments and compare the cost and speedup
-of the policies on the workloads.
+% We summarize the results obtained from the previous experiments and compare the cost and speedup
+% of the policies on the workloads.
 
-\section{Conclusion} \label{conclusion}
+% \section{Conclusion} \label{conclusion}
 
-\bibliographystyle{unsrt}
-\bibliography{large-lab}
+% \bibliographystyle{unsrt}
+% \bibliography{large-lab}
 
-\section*{Appendix A: Time Sheets}
+% \section*{Appendix A: Time Sheets}
 
-\begin{table}[htbp]
-  \centering
-  \caption{Time spent on the project per activity.}
-  \begin{tabular}{| l | r | r |}
-    \hline
-    Activity & Time (hours) \\
-    \hline
-    Total & \\
-    Think & \\
-    Dev & \\
-    XP & \\
-    Analysis & \\
-    Write & \\
-    Wasted & \\
-    \hline
-  \end{tabular}
-\end{table}
+% \begin{table}[htbp]
+%   \centering
+%   \caption{Time spent on the project per activity.}
+%   \begin{tabular}{| l | r | r |}
+%     \hline
+%     Activity & Time (hours) \\
+%     \hline
+%     Total & \\
+%     Think & \\
+%     Dev & \\
+%     XP & \\
+%     Analysis & \\
+%     Write & \\
+%     Wasted & \\
+%     \hline
+%   \end{tabular}
+% \end{table}
 
-\begin{table}[htbp]
-  \centering
-  \caption{Time spent per experiment.}
-  \begin{tabular}{| l | r | r | r |}
-    \hline
-    & \multicolumn{3}{| c |}{Time (hours)} \\
-    \hline
-    & Dev & Setup & Total \\
-    \hline
-    Baseline & & & \\
-    Overheads & & & \\
-    Provisioning & & & \\
-    Utilization & & & \\
-    Speedup & & & \\
-    \hline
-  \end{tabular}
-\end{table}
+% \begin{table}[htbp]
+%   \centering
+%   \caption{Time spent per experiment.}
+%   \begin{tabular}{| l | r | r | r |}
+%     \hline
+%     & \multicolumn{3}{| c |}{Time (hours)} \\
+%     \hline
+%     & Dev & Setup & Total \\
+%     \hline
+%     Baseline & & & \\
+%     Overheads & & & \\
+%     Provisioning & & & \\
+%     Utilization & & & \\
+%     Speedup & & & \\
+%     \hline
+%   \end{tabular}
+% \end{table}
 
 \end{document}
