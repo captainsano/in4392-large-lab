@@ -16,7 +16,7 @@
     Imagely: A cloud environment for online image processing
   }}\\
   \vspace{0.25cm}
-  \emph{Authors}: SB~Ramalingam Santhanakrishnan (4740270), \\ K~Kleeberger (???) and B~Jain (???)\\
+  \emph{Authors}: SB~Ramalingam Santhanakrishnan (4740270), \\ K~Kleeberger (4748476) and B~Jain (???)\\
   ICT Innovation, EEMCS, TU Delft\\
   \emph{Emails}: \{S.B.RamalingamSanthanakrishnan, K.Kleeberger, B.Jain\}@student.tudelft.nl\\
   \vspace{0.2cm}
@@ -42,7 +42,7 @@
 \section{Introduction}
 
 WantCloud BV is a popular image processing company and are pioneers in converting raw satellite images to standard image formats consumable by users on the web browser. As the company is expanding into other domains and 
-adding new customers rapidly, their existing deployment unable to cope up with peak traffic demands and
+adding new customers rapidly, their existing deployment is unable to cope up with peak traffic demands and
  maintain service level agreements (SLAs). Thus, WantCloud BV is evaluating an IaaS-based solution that
  can scale with the demand.
 
@@ -106,7 +106,7 @@ The system, illustrated in \autoref{fig:overview_system_design} consists of the 
    \item \emph{Provisioner}: The provisioner manages the request and release of worker instances in the resource 
    pool according to the given policy.
    \item \emph{Supervisor}: The supervisor is responsible for bootstrapping the system, monitoring the finished/failed tasks, health of the instances, maintain an audit log of all the tasks and instances to generate a report when requested and finally perform cleanup and release of instances on unexpected shutdown (SIGINT, SIGTERM)
-   if possible\footnote{During bootstrap, it queries AWS for any existing workers adds them to the resource pool.}.
+   if possible\footnote{During bootstrap, it queries AWS for any existing workers and adds them to the resource pool.}.
  \end{itemize}
 
 \subsection{Resource Management Architecture}
@@ -119,7 +119,7 @@ The system, illustrated in \autoref{fig:overview_system_design} consists of the 
 \end{figure}
 
 The components listed in \autoref{system_design_overview} each have their own life cycle and associated events.
-Since the we follow the reactive pattern, we illustrate the resource management architecture by tracing the execution
+Since we follow the reactive pattern, we illustrate the resource management architecture by tracing the execution
  of a task through the system, handled by the various components across phases listed below and in \autoref{fig:resource_management}.
 
 \begin{enumerate}
