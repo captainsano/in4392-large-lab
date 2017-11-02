@@ -2,11 +2,13 @@
 
 \usepackage{graphicx}
 \usepackage{hyperref}
+\usepackage{tabularx}
+
 \graphicspath{{illustrations/}}
 
 \begin{document}
 
-\setlength{\tabcolsep}{16pt}
+\setlength{\tabcolsep}{10pt}
 \renewcommand{\arraystretch}{1.25}
 
 \begin{center}
@@ -188,7 +190,7 @@ In the system, we have implemented one scheduling policy and one allocation poli
 The components of the system intercept events and lookup the central immutable store in order to enforce the policies. 
 This flexibility enables us to implement various other policies or combinations of by consuming the entire state of the 
 system at any point in time. The system parameters are summarized in \autoref{table:system_params}, * indicates
-that we have varied the value according to experiments in the following section.
+that we have varied the value according to experiments in the following section, refer \autoref{table:experiment_param_setup}.
 
 \begin{table}[tbp]
   \centering
@@ -211,62 +213,70 @@ that we have varied the value according to experiments in the following section.
   \end{tabular}
 \end{table}
 
+\section{Experimental Results} \label{experiments}
 
-% \section{Experimental Results} \label{experiments}
+We conduct a total of 9 experiments and analyse the results in the following sub-sections.
 
-% We perform all the experiments on the AWS cloud platform, restricted to a single region North Virgina (US-East-1) with default availability zone and the default virtual private cloud settings.
-% A custom security group is used for exposing ports 8000 (master server), 3000 (worker server) and 3001 (worker health check) for inbound TCP (HTTP) traffic.
+\subsection{Setup}
 
-% \subsection{Experimental Setup}
+The goal of the experiments is to analyse the tradeoffs between WantCloud BV's current 
+system (3 dedicated servers) versus the proposed IaaS cloud based solution by estimating the workload
+processing time, responsiveness and the cost. The key components of the system under test are the scheduler
+and provisioner, affected by the factors, task arrival time and those listed in \autoref{table:experiment_param_setup}.
 
-%  We have extended our custom AMI from the base public Ubuntu image provided by Amazon (id = ami-cd0f5cb6). Workloads have been created from the publicly available image files of NASA's 
-%  Landsat-I satellite (x images, total y MB). The workloads are varied by arrival time distribution in order to evaluate the provisioning policies. Each job in the workload requests the given image
-%  to be scaled down to 25\% of the original size, rotated by 90 degrees clockwise and converted to
-%   JPEG. We generate and send the workloads to the system using custom scripts. The instance type 
-%   we use for both master and worker is m3.medium (general purpose compute, vcpu=1 and memory=3.75Gb).
+The test system is deployed on the AWS cloud platform using bare bone EC2 compute instances. We
+use the m3.medium type (vcpus=1, memory=3.75Gb based on Intel Xeon E5-2670 v2) for both master and the worker. 
+We restricted the deployment to a single region, North Virginia (US-East-1) with default availability zone placement policy and the default 
+virtual private cloud settings provided by AWS. A custom security group is used for exposing ports 8000 (master),
+ 3000 (worker) and 3001 (worker health check) for inbound TCP (HTTP) traffic, the worker nodes however do not 
+ have public IP address and are reachable only by the master via HTTP.
 
-% \subsection{Experiments}
+ The workload consists of 100 images from the Landsat satellite in TIFF format and each task consists of
+ scaling the image down to 0.25 the original size, rotation by 90 degrees clockwise and finally conversion to 
+ TIFF format. We have three sets of 100 requests by varying the inter-arrival time through Poisson distribution
+ with mean intervals of 2.5, 5 and 7.5 seconds labelled as \textsc{W(2.5)}, \textsc{W(5)} and \textsc{W(7.5)}. The
+ system has been written in Typescript, targeting NodeJS v8 using ReactiveX extensions. The express framework has
+ been used for the web server and ElasticSearch has been used for analysing time series results obtained from
+ the audit trail report. We run the workload on three variations of system policies by adjusting the parameters,
+ firstly \textsc{C3}, which represents the baseline setup (current) of WantCloud BV, secondly \textsc{E0} -- elastic 0-15 VMs
+ with threshold set to 0 and thirdly, \textsc{E7} -- elastic 0-15 VMs with threshold set to 7.
 
-% The goal of our experiments is to measure various workload execution and VM metrics on running the
-%  static policy and the dynamic policies and analyse the results to understand the inherent
-%  tradeoffs in the elasticity of cloud environments. \footnote{TODO: for each experiment, list
-%   \emph{Charged-time}, \emph{Charged-cost} and \emph{Service metrics of the experiment}
-% }
- 
-% \subsubsection{Baseline}
+ \begin{table}[htbp]
+  \centering
+  \caption{System parameter (factors) setup for experiments}
+  \label{table:experiment_param_setup}
+  \begin{tabular}{|c|c|c|c|}
+    \hline
+    & MIN\_VMS & MAX\_VMS & THRESHOLD \\
+    \hline
+    C3 & 3 & 3 & - \\
+    E0 & 0 & 15 & 0 \\
+    E7 & 0 & 15 & 7 \\
+    \hline
+  \end{tabular}
+ \end{table}
 
-% We determine the makespan of the three workloads on a single unit (SU) instance to analyze 
-% the relative speedups and cost-tradeoff in later experiments.
+\subsubsection{Processing time}
 
-% \subsubsection{Overheads}
 
-% We identify a major overhead in the system due to the time taken for a newly launched VM to 
-% reach the ready state. To measure this, we repeatedly request, wait till ready and release a 
-% single VM instance for 25 times.
 
-% \subsubsection{Provisioning Policy}
+\subsubsection{Responsiveness}
 
-% We exercise three workload variants, linear, bursty and poisson across the three allocation policies,
+\subsubsection{Cost}
 
-% \begin{itemize}
-%   \item \textsc{CONSTANT-5}, constantly 5 VMs.
-%   \item \textsc{OD-S-0}, threshold set to 0, 2 to 20 VMs.
-%   \item \textsc{OD-S-5}, threshold set to 5, 2 to 20 VMs.
-% \end{itemize}
+\subsubsection{Utilization}
 
-% \subsubsection{Utilization}
+Utilization is the ratio of the total time spent by the workers in executing the jobs to the
+total lifetime (including boot time) of the workers, described by equation~\autoref{eq:utilization}.
 
-% Utilization is the ratio of the total time spent by the workers in executing the jobs to the
-% total lifetime (including boot time) of the workers, described by equation~\autoref{eq:utilization}.
+\begin{equation} \label{eq:utilization}
+  Utilization = \frac{\sum T_{execution}}{\sum T_{lifetime}}
+\end{equation}
 
-% \begin{equation} \label{eq:utilization}
-%   Utilization = \frac{\sum T_{execution}}{\sum T_{lifetime}}
-% \end{equation}
+\subsubsection{Speedup vs Cost Tradeoff}
 
-% \subsubsection{Speedup vs Cost Tradeoff}
-
-% We summarize the results obtained from the previous experiments and compare the cost and speedup
-% of the policies on the workloads.
+We summarize the results obtained from the previous experiments and compare the cost and speedup
+of the policies on the workloads.
 
 \section{Conclusion} \label{conclusion}
 
