@@ -3,8 +3,23 @@
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{tikz}
+\usepackage{pgfplots}
+
+\newcommand{\specialcell}[2][c]{%
+\begin{tabular}[#1]{@{}c@{}}#2\end{tabular}}
 
 \graphicspath{{illustrations/}}
+\pgfplotsset{compat=1.14}
+
+\pgfplotsset{
+  /pgfplots/ybar legend/.style={
+  /pgfplots/legend image code/.code={%
+    \draw[##1,/tikz/.cd,yshift=-0.30em]
+      (0cm,0cm) rectangle (3pt,0.8em);},
+  },
+}
 
 \begin{document}
 
@@ -222,7 +237,7 @@ We conduct a total of 9 experiments and analyse the results in the following sub
 The goal of the experiments is to analyse the tradeoffs between WantCloud BV's current 
 system (3 dedicated servers) versus the proposed IaaS cloud based solution by estimating the workload
 processing time, responsiveness and the cost. The key components of the system under test are the scheduler
-and provisioner, affected by the factors, task arrival time and those listed in \autoref{table:experiment_param_setup}.
+and provisioner, affected by the factors, task arrival time and threshold for scaling.
 
 The test system is deployed on the AWS cloud platform using bare bone EC2 compute instances. We
 use the m3.medium type (vcpus=1, memory=3.75Gb based on Intel Xeon E5-2670 v2) for both master and the worker. 
@@ -237,48 +252,169 @@ virtual private cloud settings provided by AWS. A custom security group is used 
  with mean intervals of 2.5, 5 and 7.5 seconds labelled as \textsc{W(2.5)}, \textsc{W(5)} and \textsc{W(7.5)}. The
  system has been written in Typescript, targeting NodeJS v8 using ReactiveX extensions. The express framework has
  been used for the web server and ElasticSearch has been used for analysing time series results obtained from
- the audit trail report. We run the workload on three variations of system policies by adjusting the parameters,
- firstly \textsc{C3}, which represents the baseline setup (current) of WantCloud BV, secondly \textsc{E0} -- elastic 0-15 VMs
- with threshold set to 0 and thirdly, \textsc{E7} -- elastic 0-15 VMs with threshold set to 7.
+ the audit trail report. 
 
- \begin{table}[htbp]
-  \centering
-  \caption{System parameter (factors) setup for experiments}
-  \label{table:experiment_param_setup}
-  \begin{tabular}{|c|c|c|c|}
-    \hline
-    & MIN\_VMS & MAX\_VMS & THRESHOLD \\
-    \hline
-    C3 & 3 & 3 & - \\
-    E0 & 0 & 15 & 0 \\
-    E7 & 0 & 15 & 7 \\
-    \hline
-  \end{tabular}
- \end{table}
+\subsection{Experiments}
+
+We run the workload on three variations of system policies by adjusting the parameters,
+ firstly \textsc{C3} -- constantly 3 VMs, which represents the current setup of WantCloud BV, secondly \textsc{E0} -- elastic 0-15 VMs with threshold set to 0 and thirdly, \textsc{E7} -- elastic 0-15 VMs with threshold set to 7. The factors target the load balancing and provisioning policy of the system. In the following sections we present the analysis.
+
+\subsubsection{Overheads}
+
+The average VM allocation overhead by AWS was found to be 42 seconds and we did not find any significant network overheads. However, to prevent any disruptions due to network, we placed a workload driver instance in the same availability zone subnet as of the master node and ran the experiments.
 
 \subsubsection{Processing time}
 
+The total time the system took to process the entire workload, presented
+in \autoref{fig:processing_time}, shows that E0 takes the least amount of time (272 seconds) for 2.5 second
+interval. However, E0 performs the worst as the mean arrival time starts to increase. This can be directly attributed
+to the fact that the policy is very aggressive in releasing VMs and thus a lot of thrashing is going on.
 
+\begin{figure}[tbp]
+  \begin{tikzpicture}
+    \begin{axis}[
+      xtick=data,
+      ylabel = Processing time (seconds),
+      xlabel = Mean arrival time,
+      legend style={at={(0.175, 0.95)}},
+      enlarge x limits=0.25,
+      ybar=5pt,
+      bar width=9pt,
+    ]
+    \legend{C3, E0, E7}
+    \addplot coordinates {
+      (2.5, 372.347) (5.0, 599.254) (7.5, 772.459)
+    };
+    \addplot coordinates {
+      (2.5, 272.241) (5.0, 575.742) (7.5, 910.306)
+    };
+    \addplot coordinates {
+      (2.5, 343.241) (5.0, 468.092) (7.5, 673.886)
+    };
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Workload processing time across three mean arrival times.}
+  \label{fig:processing_time}
+\end{figure}
 
 \subsubsection{Responsiveness}
 
-\subsubsection{Cost}
+The metric for responsiveness is derived from the average waiting time of the tasks in the workload until
+they were scheduled for execution, presented in \autoref{fig:waiting_time}. We observe that \textsc{C3} has the least wait time for 7.5 seconds mean arrival time at 595.6 seconds. We also observe that \textsc{E0} maintains 
+sa consistent wait time for both 5 and 7.5 seconds. However, on closer inspection, we found that the minimum waiting
+time values of elastic policy was as low as 0.015 seconds in one case, with 95th percentile values ranging from
+35 to 40 seconds. This fluctuation occurs because the wait times for a sequence of tasks are observed to be higher when a free VM is not found and the provisioner is starting a new instance, causing all the tasks in the queue to starve. On the other hand, multiple VMs become free when tasks get finished together, which causes a few tasks to be scheduled as soon as they arrive (we have not shown the detailed time series illustrations in this report). We also
+found task retries to be playing a role here. The failed task enters the pending queue with highest priority and also
+the instance on which the task failed is now marked for health check, effectively taking away one worker from the pool
+for a few seconds. This specific case occurred in E7 when there was only 1 instance running, a task failed and
+there were 5 other tasks (7 is threshold) in the pending queue, suggesting an improvement to the policy to have at least 2 VMs running at all times or to handle the retries differently.
+
+\begin{figure}[tbp]
+  \begin{tikzpicture}
+    \begin{axis}[
+      xtick=data,
+      ylabel = Average task waiting time (seconds),
+      xlabel = Mean arrival time,
+      legend style={at={(0.80, 0.95)}},
+      enlarge x limits=0.25,
+      ybar=5pt,
+      bar width=9pt,
+      ymin=0,
+    ]
+    \legend{C3, E0, E7}
+    \addplot coordinates {
+      (2.5, 41.55456) (5.0, 13.01204) (7.5, 5.956)
+    };
+    \addplot coordinates {
+      (2.5, 31.72191) (5.0, 16.89337) (7.5, 16.66199)
+    };
+    \addplot coordinates {
+      (2.5, 35.81022) (5.0, 38.47375) (7.5, 43.13281)
+    };
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Cumulative task waiting time for workload across arrival times}
+  \label{fig:waiting_time}
+\end{figure}
 
 \subsubsection{Utilization}
 
-Utilization is the ratio of the total time spent by the workers in executing the jobs to the
-total lifetime (including boot time) of the workers, described by equation~\autoref{eq:utilization}.
+We analyse the utilization of the system presented in \autoref{fig:utilization} as the ratio of total VM time spent
+in task execution to its total lifetime. The maximum utilization we see even for \textsc{C3} where there is no provisioning overhead is about 80\%. This highlights the drawback in the periodic invocation of the scheduler and provisioner. The VMs have to wait for the next scheduling/provisioning cycle until which they are going to be idle. Another cause is the scheduled termination time where the VM waits for 10 seconds before getting terminated. If a task arrives at its 8th second of wait time, the task will miss the VM anyway. 
 
-\begin{equation} \label{eq:utilization}
-  Utilization = \frac{\sum T_{execution}}{\sum T_{lifetime}}
-\end{equation}
+This chart once again highlights the thrashing problem associated with \textsc{E0}, it is simply keeping around idle VMs due to termination wait time. However, we see a balanced utilization for \textsc{E7}, it gains from not letting the VM go away immediately as the allocation overhead is much larger and preventing VMs from having a short lifetime.
 
-\subsubsection{Speedup vs Cost Tradeoff}
+\begin{figure}[tbp]
+  \begin{tikzpicture}
+    \begin{axis}[
+      xtick=data,
+      ylabel = Utilization Percentage,
+      xlabel = Mean arrival time,
+      legend style={at={(0.95, 0.95)}},
+      enlarge x limits=0.25,
+      ybar=5pt,
+      bar width=9pt,
+      ymin=0,
+      ymax=100,
+    ]
+    \legend{C3, E0, E7}
+    \addplot coordinates {
+      (2.5, 78.6) (5.0, 56.4) (7.5, 46.5)
+    };
+    \addplot coordinates {
+      (2.5, 60.5) (5.0, 45.9) (7.5, 38.6)
+    };
+    \addplot coordinates {
+      (2.5, 62.0) (5.0, 64.3) (7.5, 53.7)
+    };
+    \end{axis}
+  \end{tikzpicture}
+  \caption{Utilization of VMs for workload across arrival times}
+  \label{fig:utilization}
+\end{figure}
 
-We summarize the results obtained from the previous experiments and compare the cost and speedup
-of the policies on the workloads.
+\subsubsection{Costs}
+
+Each experiment (except C3 with constantly 3 workers) starts and stops several VMs over its processing time and our total instance run time is under 1 hour for each experiment. Therefore, the cost is computed in terms of hourly charges for unique instances launched, tabulated in \autoref{table:costs} for running m3.medium instance\footnote{In the real life however, AWS offers per second billing which would greatly reduce the cost, which our policies were designed for.}. Apart from the instance cost, there are minor acceptable costs involving the ephemeral disk storage, data transfer and AMI snapshots.
+
+\begin{table}[hbp]
+  \centering
+  \caption{Charged cost per hour across arrival times}
+  \label{table:costs}
+  \begin{tabular}{|c|c|c|c|}
+    \hline
+    Policy & 2.5s & 5s & 7.5s \\
+    \hline
+    C3 & \$0.27 ~(4) & \$0.27 ~(4) & \$0.27 ~(4) \\
+    E0 & \$1.88 (28) & \$3.89 (58) & \$6.16 (92) \\
+    E7 & \$2.01 (30) & \$2.08 (31) & \$3.82 (57) \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \section{Conclusion} \label{conclusion}
+
+The speedups show in \autoref{table:speedup} indicates that a maximum speedup of upto 1.38 times the current
+system of WantCloud can be achieved with a IaaS based deployment for a workload in high traffic. The system
+provides a good user experience by significantly reducing the response time to a factor of 1.3 times while 
+maintaining a much higher workload compared to the baseline performance. The incidental costs of cloud when such a traffic is not present should also be noted. Based on our analysis, in some cases it costs more than 10 times to finish the same amount of work with only a marginal speedup. However, it is cost-worthy to move to cloud since
+WantCloud is expecting a much higher traffic load in the near future.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Speedup}
+  \label{table:speedup}
+  \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    \multirow{2}{*}{\specialcell{Arr.\\Time}} & \multicolumn{1}{|c|}{C3} & \multicolumn{1}{|c|}{E0} & \multicolumn{1}{|c|}{E7} \\
+     & Speedup & Speedup & Speedup \\
+    \hline
+     2.5 & 1.0 & 1.38 & 1.09 \\
+     5.0 & 1.0 & 1.04 & 1.28 \\
+     7.5 & 1.0 & 0.84 & 1.14 \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \bibliographystyle{unsrt}
 \bibliography{large-lab}
