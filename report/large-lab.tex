@@ -75,7 +75,7 @@ The system design follows the AWS reference architecture for batch processing~\c
 implemented our own custom scheduler and provisioner in a reactive fashion and have placed all the task queues and resource management responsibilities on the master node. The master node accepts the image processing task requests via HTTP and launches multiple worker nodes, based on the given policy. It then balances and allocates the tasks to the workers and also monitors the progress. It also keeps accumulating reports on completion of each task and launch/release of each instance during its lifetime. The policy targets the provisioner with parameters for minimum and maximum
 number of workers to launch and the scaling-up decision threshold.
 
-The test workload is a collection of 100 TIFF images from NASA's publicly available Landsat satellite image repository \cite{landsat_s3}, file sizes ranging from 40-60 MB. To determine the baseline (current) effort required, we run the workload on a static VM deployment and to analyse the scaling and scheduling capability of the cloud solution, we test the workload with two well-known policies. The workload itself is varied with three exponential Poisson~\cite{poisson} mean arrival time distributions to simulate realistic traffic patterns.
+The test workload is a collection of 100 TIFF images from NASA's publicly available Landsat satellite image repository \cite{landsat_s3}, file sizes ranging from 40-60 MB. To determine the baseline (current) effort required, we run the workload on a static VM deployment and to analyse the scaling and scheduling capability of the cloud solution, we test the workload with two well-known policies. The workload itself is varied with three exponential Poisson~\cite{jain1990art} mean arrival time distributions to simulate realistic traffic patterns.
 
 In \autoref{application}, additional background information on the application is provided. In \autoref{system_design} we illustrate the design of the system in detail with focus on specific aspects pertaining to
 WantCloud's requirements and in \autoref{experiments} we present the experiments conducted along with the
@@ -183,7 +183,7 @@ In the system, we have implemented one scheduling policy and one allocation poli
   \item \emph{Scheduling}: The scheduler implements the first come, first serve (FCFS) policy.
   It picks the task with the earliest arrival time and maximum retry count for execution on the next available worker instance.
 
-  \item \emph{Provisioning}: We implement \textsc{On-Demand Single VM (OD-S)} policy~\cite{od-s}, which allocates 
+  \item \emph{Provisioning}: We implement \textsc{On-Demand Single VM (OD-S)} policy~\cite{villegas2012analysis}, which allocates 
   one VM per job and releases the VM after job completion plus a wait time (10 seconds in our case). The decision on provisioning
   of new instances is taken when the pending task queue length goes above the given threshold.
 
@@ -444,17 +444,15 @@ The speedups shown in \autoref{table:speedup} indicate that a maximum speedup of
     \multirow{2}{*}{\specialcell{Arr.\\Time}} & \multicolumn{1}{|c|}{C3} & \multicolumn{1}{|c|}{E0} & \multicolumn{1}{|c|}{E7} \\
      & Speedup & Speedup & Speedup \\
     \hline
-     2.5 & 1.0 & 1.38 & 1.09 \\
-     5.0 & 1.0 & 1.04 & 1.28 \\
-     7.5 & 1.0 & 0.84 & 1.14 \\
+     W(2.5) & 1.0 & 1.38 & 1.09 \\
+     W(5.0) & 1.0 & 1.04 & 1.28 \\
+     W(7.5) & 1.0 & 0.84 & 1.14 \\
     \hline
   \end{tabular}
 \end{table}
 
-\bibliographystyle{unsrt}
+\bibliographystyle{myIEEEtran}
 \bibliography{large-lab}
-
-\newpage
 
 \section*{Appendix A: Time Sheets}
 
