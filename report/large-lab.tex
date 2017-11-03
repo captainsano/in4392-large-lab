@@ -77,9 +77,8 @@ number of workers to launch and the scaling-up decision threshold.
 
 The test workload is a collection of 100 TIFF images from NASA's publicly available Landsat satellite image repository \cite{landsat_s3}, file sizes ranging from 40-60 MB. To determine the baseline (current) effort required, we run the workload on a static VM deployment and to analyse the scaling and scheduling capability of the cloud solution, we test the workload with two policies, \textsc{FCFS} and \textsc{OD-S}, explained below. The workload itself is varied with three exponential Poisson~\cite{jain1990art} mean arrival time distributions to simulate realistic traffic patterns.
 
-In \autoref{application}, additional background information on the application is provided. In \autoref{system_design} we illustrate the design of the system in detail with focus on specific aspects pertaining to
-WantCloud's requirements and in \autoref{experiments} we present the experiments conducted along with the
-results, analysis and further potential improvements of our system. We conclude the report in \autoref{conclusion} with a short discussion on the findings.
+In \autoref{application}, additional background information on the application is provided. In \autoref{system_design} we illustrate the design of the system in detail with focus on specific aspects pertaining to WantCloud's requirements and in \autoref{experiments} we present the experiments conducted along with the results, analysis and potential improvements. We conclude the report in \autoref{conclusion} with a short summary on the main findings.
+
 
 \section{Application} \label{application}
 
