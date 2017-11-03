@@ -270,7 +270,7 @@ in \autoref{fig:processing_time}, shows that E0 takes the least amount of time (
     \begin{axis}[
       xtick=data,
       ylabel = Processing time (seconds),
-      xlabel = Mean arrival time,
+      xlabel = Mean arrival time (seconds),
       legend style={at={(0.175, 0.95)}},
       enlarge x limits=0.25,
       ybar=5pt,
@@ -306,7 +306,7 @@ We also found task retries to be playing a role here. The failed task enters the
     \begin{axis}[
       xtick=data,
       ylabel = Average task waiting time (seconds),
-      xlabel = Mean arrival time,
+      xlabel = Mean arrival time (seconds),
       legend style={at={(0.80, 0.95)}},
       enlarge x limits=0.25,
       ybar=5pt,
@@ -371,8 +371,8 @@ This chart once again highlights the thrashing problem associated with \textsc{E
   \begin{tikzpicture}
     \begin{axis}[
       xtick=data,
-      ylabel = Utilization Percentage,
-      xlabel = Mean arrival time,
+      ylabel = Utilization (percentage),
+      xlabel = Mean arrival time (seconds),
       legend style={at={(0.95, 0.95)}},
       enlarge x limits=0.25,
       ybar=5pt,
