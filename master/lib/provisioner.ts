@@ -15,7 +15,7 @@ const PROVISIONER_INTERVAL = 5000
 const PROVISIONER_DEBOUNCE = 1000
 const HEALTH_CHECK_INTERVAL = 1000
 const INSTANCE_READY_TIMEOUT = 60 * 1000
-const TERMINATION_WAIT_TIME = 10 * 1000
+const TERMINATION_WAIT_TIME = 20 * 1000
 
 interface CloudProvider {
     startInstance: () => Promise<Instance>,
@@ -65,6 +65,8 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
                     R.toPairs
                 )(state.instances.starting) as Instance[]
 
+                const instancesScheduledForTermination = R.filter(((i) => i.scheduledForTermination || false), allRunningInstances)
+
                 const allInstancesLength = allRunningInstances.length + allStartingInstances.length
 
                 const freeInstances = pickFreeInstances(state)
@@ -73,7 +75,14 @@ export default function createProvisioner<S extends MasterState>(policy: Provisi
                 if ((pendingQueueLength > policy.taskQueueThreshold ||
                     (pendingQueueLength > 0 && allInstancesLength === 0)) &&
                     allInstancesLength < policy.maxVMs) {
-                    return terminationScheduleActions.concat(Observable.of(requestInstance()))
+                    // Request for a new instance only if the starting instances is 0 or scheduled for termination is 0
+                    if (instancesScheduledForTermination.length > 0) {
+                        return terminationScheduleActions.concat(Observable.of(unscheduleForTerminationInstance(instancesScheduledForTermination[0])))
+                    }
+
+                    if (allStartingInstances.length === 0) {
+                        return terminationScheduleActions.concat(Observable.of(requestInstance()))
+                    }
                 }
 
                 return terminationScheduleActions
