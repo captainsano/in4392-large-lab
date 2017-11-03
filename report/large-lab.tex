@@ -77,8 +77,7 @@ number of workers to launch and the scaling-up decision threshold.
 
 The test workload is a collection of 100 TIFF images from NASA's publicly available Landsat satellite image repository \cite{landsat_s3}, file sizes ranging from 40-60 MB. To determine the baseline (current) effort required, we run the workload on a static VM deployment and to analyse the scaling and scheduling capability of the cloud solution, we test the workload with two policies, \textsc{FCFS} and \textsc{OD-S}, explained below. The workload itself is varied with three exponential Poisson~\cite{jain1990art} mean arrival time distributions to simulate realistic traffic patterns.
 
-In \autoref{application}, additional background information on the application is provided. In \autoref{system_design} we illustrate the design of the system in detail with focus on specific aspects pertaining to WantCloud's requirements and in \autoref{experiments} we present the experiments conducted along with the results, analysis and potential improvements. We conclude the report in \autoref{conclusion} with a short summary on the main findings.
-
+In \autoref{application}, additional background information on the application is provided. In \autoref{system_design} we illustrate the design of the system in detail with focus on specific aspects pertaining to WantCloud's requirements and in \autoref{experiments} we present the experiments conducted along with the results and analysis. In \autoref{sec:discussion} we discuss our findings briefly and list potential improvements. We conclude the report in \autoref{conclusion} with a short summary on the main findings.
 
 \section{Application} \label{application}
 
@@ -261,10 +260,7 @@ The average VM allocation overhead by AWS was found to be 42 seconds and we did 
 
 \subsubsection{Processing time}
 
-The total time the system took to process the entire workload, presented
-in \autoref{fig:processing_time}, shows that E0 takes the least amount of time (272 seconds) for W(2.5). However, E0 performs the worst as the mean arrival time starts to increase. This can be directly attributed to the fact that the policy is very aggressive in releasing VMs and thus a lot of thrashing is experienced.
-
-\begin{figure}[bp]
+\begin{figure}[tbp]
   \begin{tikzpicture}
     \begin{axis}[
       xtick=data,
@@ -291,14 +287,23 @@ in \autoref{fig:processing_time}, shows that E0 takes the least amount of time (
   \label{fig:processing_time}
 \end{figure}
 
+The total time the system took to process the entire workload, presented
+in \autoref{fig:processing_time}, shows that E0 takes the least amount of time (272 seconds) for W(2.5). However, E0 performs the worst as the mean arrival time starts to increase. This can be directly attributed to the fact that the policy is very aggressive in allocating and releasing VMs and thus a lot of thrashing is experienced when not so many tasks are in the queue.
+
+We observe that the C3 and E7 are consistently proportional to the task input, especially E7 is
+able to handle all the arrival times better than C3.
+
+
 \subsubsection{Responsiveness}
 
-The metric for responsiveness is derived from the average waiting time of the tasks in the pending queue until they are scheduled for execution, presented in \autoref{fig:waiting_time}. Contrary to our expectations, we see that \textsc{C3} has the least average wait time of 7.5 seconds at 595.6 seconds for W(7.5). We also observe that \textsc{E0} maintains 
-a consistent wait time for both W(5) and W(7.5). However, on closer inspection, we found that the  waiting time average has been heavily skewed by a few outliers affected by the provisioner. We focus
-on the results of W(2.5) in \autoref{fig:response_time_box_plot}, where majority of the tasks for
-E0 and E7 lie below 40 seconds. This large waiting time occurs for a few tasks when a free VM is not found and the provisioner is still starting a new instance, causing all the tasks in the queue to starve. This happens when the system starts the first instance (correlates to $\approx$40 seconds instance startup overhead) and also in one another case when all the VMs are shut down to 0. 
+The metric for responsiveness is derived from the average waiting time of the tasks in the pending queue until they are scheduled for execution, presented in \autoref{fig:waiting_time}. Contrary to our expectations, we see that \textsc{C3} has the least average wait time of 7.5 seconds for W(7.5).
+We originally expected one of the elastic policies to be much more responsive. We also observe that \textsc{E0} maintains almost similar average wait time for both W(5) and W(7.5). 
 
-We also found task retries to be playing a role here. The failed task enters the pending queue with highest priority and also the instance on which the task failed is now marked for health check, effectively taking away one worker from the pool for a few seconds. This specific case occurred in E7 when there was only 1 instance running, a task failed and there were 5 other tasks (7 is threshold) in the pending queue.
+On closer inspection, we found that the average waiting time has been heavily dominated by a few outliers affected by the initial VM provisioning. We focus
+on the results of W(2.5) in \autoref{fig:response_time_box_plot}, where a majority of the tasks for
+E0 and E7 lie below 40 seconds. This large waiting time occurs for a few tasks when a free VM is not found and the provisioner is still starting a new instance, causing all the tasks in the queue to starve, until the VMs catch up. This happens when the system starts the first instance (note that it correlates to $\approx$40 seconds startup overhead) and also in one another case when right after all the VMs are shut down due to an empty pending task queue. 
+
+We also found task retries to be playing a role here. The failed task enters the pending queue with highest priority and also the instance on which the task failed is now marked for health check, effectively taking away one worker from the pool for a few seconds. This specific case occurred in E7 when there was only one instance running, a task failed and there were 5 other tasks (7 is threshold) in the pending queue.
 
 \begin{figure}[tbp]
   \begin{tikzpicture}
@@ -361,10 +366,11 @@ We also found task retries to be playing a role here. The failed task enters the
 
 \subsubsection{Utilization}
 
-We analyse the utilization of the system presented in \autoref{fig:utilization} as the ratio of total VM time spent
-in task execution to its total lifetime. The maximum utilization we see even for \textsc{C3} where there is no provisioning overhead is about 80\%. This highlights the drawback in the periodic invocation of the scheduler and provisioner. The VMs have to wait for the next scheduling/provisioning cycle until which they are going to be idle. Another cause is the scheduled termination time where the VM waits for 10 seconds before getting terminated. If a task arrives at its 8th second of wait time, the task will miss the VM anyway. 
+We measure the utilization of the system presented in \autoref{fig:utilization} as the ratio of total VM time spent
+in task execution to its total lifetime. The maximum utilization we see even for \textsc{C3} where there is no provisioning overhead is about 80\%. This highlights the drawback in the periodic invocation of the scheduler and provisioner. The VMs have to wait for the next scheduling/provisioning cycle until which they are going to be idle. Another cause for overall low utilization is the scheduled termination time where a VM waits for 10 seconds before getting terminated. If a task arrives at its 8th second of wait time, the task will miss the VM anyway due to minor delays in scheduling. 
 
-This chart once again highlights the thrashing problem associated with \textsc{E0}, it is simply keeping around idle VMs due to termination wait time. However, we see a balanced utilization for \textsc{E7}, it gains from not letting the VM go away immediately as the allocation overhead is much larger and preventing VMs from having a short lifetime.
+We once again observe the thrashing problem associated with \textsc{E0}, it is simply keeping around idle VMs due to termination wait time. However, we see a balanced utilization for \textsc{E7}, it gains from not having to decide on provisioning on each invocation unlike \textsc{E0} because of 
+the threshold, effectively minimizing thrashing.
 
 \begin{figure}[tbp]
   \begin{tikzpicture}
@@ -414,15 +420,29 @@ Each experiment (except C3 with constantly 3 workers) starts and stops several V
   \end{tabular}
 \end{table}
 
-\subsection{Potential Improvements}
+\section{Discussion}
 
-The experiments and analysis suggest that the \textsc{E7} policy is all round consistent with
-all arrival times. We would like to improve in the following areas.
+\label{sec:discussion}
+
+The experiments and analysis suggest that the \textsc{E7} policy is all round consistent across
+all requirement criteria with all arrival times. In order to meet response time demands however,
+E0 seems to be the best as it aggressively allocates VMs (due to threshold 0) and positions the
+system for responsiveness. This can be proved by looking at \autoref{fig:response_time_box_plot},
+for W(2.5) averarage waiting time where a majority of the tasks for E0 wait lesser than 40 seconds. 
+Thus for continuous peak traffic demands, once it reaches maxVMs, E0 is the best. However, real web
+traffic is more like a sine wave with peaks and troughs and image workloads are generally smaller, which is when the aggressive allocation and termination will suffer.
+
+For future work on the implementation, we would like to work and present on a more accurate time
+series analysis to trace the events and identify patterns which lead to the specific problems
+we encountered with the current system. In addition we would like to analyse a policy with minimum
+VMs of 3 and not 0 and see how the metrics change.
+
+Also, we would like to improve in the following areas.
 
 \begin{enumerate}
   \item Schedule more than one task in a worker, considering that 50\% of the time the worker is
   either downloading or uploading data.
-  \item Scale up instances in multiples of 2 or geometrically.
+  \item Scale up and scale down instances in multiples of 2 or on a geometric progression.
   \item Run a worker process in the master node itself. This can further increase the responsiveness
   and save cost.
   \item Implement shortest job scheduling policy since the tasks can be roughly weighted with the input image size.
@@ -431,8 +451,6 @@ all arrival times. We would like to improve in the following areas.
 Clearly there are many other drawbacks in our implementation which we wish to overcome. However the experiments gave deep insights into the various bottlenecks and optimization points in the system.
 
 \section{Conclusion} \label{conclusion}
-
-The speedups shown in \autoref{table:speedup} indicate that a maximum speedup of upto 1.38 times was achieve by our system. The chief requirement of WantCloud BV, is to maintain responsiveness at peak traffic demands, which is clearly met by the system, illustrated in \autoref{fig:response_time_box_plot}, where a majority of the traffic is scheduled for execution within 40 seconds, \textsc{W(2.5)}. The incidental costs of cloud when such a traffic is not present should also be noted though. However, the elastic policies can scale the system down to 0 workers, saving cost when there is no traffic. We found that in some cases it costs more than 10 times to finish the same amount of work with only a marginal speedup, indicating that policies must be chosen carefully. After analysing the tradeoffs, we think that it is cost-worthy for WantCloud BV to move their application to cloud.
 
 \begin{table}[htbp]
   \centering
@@ -449,6 +467,8 @@ The speedups shown in \autoref{table:speedup} indicate that a maximum speedup of
     \hline
   \end{tabular}
 \end{table}
+
+In our IaaS cloud implementation for image processing workloads, \autoref{table:speedup} indicates that a maximum speedup of upto 1.38 times was achievable by our system. The chief requirement of WantCloud BV, was to maintain responsiveness at peak traffic demands, which is clearly met by the system, illustrated in \autoref{fig:response_time_box_plot}, where a majority of the traffic is scheduled for execution within 40 seconds, \textsc{W(2.5)}. The incidental costs of cloud when such a traffic is not present should also be noted though, however, the elastic policies can scale the system down to 0 workers, saving cost in such situations. We found that in some cases it costs more than 10 times to finish the same amount of work with only a marginal speedup, indicating that policies must be chosen carefully. After analysing the tradeoffs, we think that it is cost-worthy for WantCloud BV to move their application to cloud to handle peak demands.
 
 \bibliographystyle{myIEEEtran}
 \bibliography{large-lab}
