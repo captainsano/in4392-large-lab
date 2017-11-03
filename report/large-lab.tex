@@ -83,7 +83,7 @@ results and analysis. We conclude the report in \autoref{conclusion} with a shor
 
 \section{Application} \label{application}
 
-The web-based application receives tasks from end-users in JSON format~\cite{rfc7159}, which point to a source image URL and defines a sequence of image manipulation operations such as scaling, rotation and finally file format conversion from TIFF to JPEG. This JSON request is forwarded to an idle worker in the resource pool by the master node. Internally, ImageMagick program is used for processing the image and it is forked by the worker's NodeJS web server. The application is I/O bound during retrieval of the source image and writing the result to AWS S3 storage (the NodeJS web server handles all I/O), CPU and memory intensive when it performs the actual image manipulation and conversion. A task is declared to be a failed if any of the above three steps encounter an error or the entire task does not complete within 30 seconds.
+The web-based application receives tasks from end-users in JSON format~\cite{rfc7159}, which point to a source image URL and defines a sequence of image manipulation operations such as scaling, rotation and finally file format conversion from TIFF to JPEG. This JSON request is forwarded to an idle worker in the resource pool by the master node. Internally, ImageMagick program is used for processing the image and it is forked by the worker's NodeJS web server. The system has been written in Typescript~\cite{typescript}, targeting NodeJS version 8 using ReactiveX extensions~\cite{reactivex}. The express~\cite{express} framework has been used for the web server. The application is I/O bound during retrieval of the source image and writing the result to AWS S3 storage (the NodeJS web server handles all I/O), CPU and memory intensive when it performs the actual image manipulation and conversion. A task is declared to be a failed if any of the above three steps encounter an error or the entire task does not complete within 30 seconds.
 
 \subsection{Requirements}
 
@@ -247,9 +247,9 @@ virtual private cloud settings provided by AWS. A custom security group is used 
  The workload consists of 100 images from the Landsat satellite in TIFF format and each task consists of
  scaling the image size down to a factor of 0.25, rotation by 90 degrees clockwise and finally conversion to 
  TIFF format. We have three sets of 100 requests by varying the inter-arrival time through Poisson distribution
- with mean intervals of 2.5, 5 and 7.5 seconds labelled as \textsc{W(2.5)}, \textsc{W(5)} and \textsc{W(7.5)}. The
- system has been written in Typescript~\cite{typescript}, targeting NodeJS version 8 using ReactiveX extensions~\cite{reactivex}. The express~\cite{express} framework has
- been used for the web server and ElasticSearch~\cite{elasticsearch} has been used for analysing time series results obtained from the audit log report. 
+ with mean intervals of 2.5, 5 and 7.5 seconds labelled as \textsc{W(2.5)}, \textsc{W(5)} and \textsc{W(7.5)}.
+ 
+ We use ElasticSearch~\cite{elasticsearch} for analysing time series results obtained from the audit log report. 
 
 \subsection{Experiments}
 
