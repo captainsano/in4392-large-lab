@@ -398,7 +398,7 @@ This chart once again highlights the thrashing problem associated with \textsc{E
 
 \subsubsection{Costs}
 
-Each experiment (except C3 with constantly 3 workers) starts and stops several VMs over its processing time and our total instance run time is under 1 hour for each experiment. Therefore, the cost is computed in terms of hourly charges for unique instances launched, tabulated in \autoref{table:costs} for running m3.medium instance\footnote{In the real life however, AWS offers per second billing which would greatly reduce the cost, which our policies were designed for.}. Apart from the instance cost, there are minor acceptable costs involving the ephemeral disk storage, data transfer and AMI snapshots.
+Each experiment (except C3 with constantly 3 workers) starts and stops several VMs over its processing time and our total instance run time is under 1 hour for each experiment. Therefore, the cost is computed in terms of hourly charges for unique instances launched, tabulated in \autoref{table:costs} for running m3.medium instance\footnote{At the time of writing this report however, AWS offers per second billing which would greatly reduce the cost, which our policies were designed for.}. Apart from the instance cost, there are minor acceptable costs involving the ephemeral disk storage, data transfer and AMI snapshots.
 
 \begin{table}[hbp]
   \centering
