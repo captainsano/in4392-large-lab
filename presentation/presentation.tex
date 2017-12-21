@@ -1,0 +1,93 @@
+% TU Delft beamer template
+% Author: Erwin Walraven (initial version was created by Maarten Abbink)
+% Delft Universiy of Technology
+
+\documentclass{beamer}
+\usepackage[english]{babel}
+\usepackage{calc}
+\usepackage[absolute,overlay]{textpos}
+\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{comment}
+\usepackage{MnSymbol,wasysym}
+\usepackage{tikz}
+\usepackage[absolute,overlay]{textpos}
+\usetikzlibrary{arrows}
+\usetikzlibrary{positioning}
+\usefonttheme[onlymath]{serif}
+
+\graphicspath{ {figures/} }
+
+\setbeamertemplate{navigation symbols}{} % remove navigation symbols
+\mode<presentation>{\usetheme{tud}}
+
+% BIB SETTINGS
+\usepackage[backend=bibtex,firstinits=true,maxnames=30,maxcitenames=20,url=false,style=authoryear]{biblatex}
+\bibliography{bibfile}
+\setlength\bibitemsep{0.3cm} % space between entries in the reference list
+\renewcommand{\bibfont}{\normalfont\scriptsize}
+\setbeamerfont{footnote}{size=\tiny}
+\renewcommand{\cite}[1]{\footnote<.->[frame]{\fullcite{#1}}}
+%==== END OF TU Delft Theme ====
+
+\title[]{Naiad: A Timely Dataflow System}
+\author{Derek G Murray et al.}
+\institute{$24^{th}$ ACM Symposium on Operating System Principles, 2013}
+\date{}
+
+\begin{document}
+
+\begin{frame}[noframenumbering]
+  \maketitle
+  \vspace{2.25cm}
+  \scriptsize{Presentation by:} \\
+  \normalsize{
+    SB Ramalingam Santhanakrishnan \\
+    K Kleeberger \\
+    B Jain \\
+    (Group 7)\\
+  }
+  \vspace{0.6cm}
+  \scriptsize{October 11, 2017 - Seminar Cloud Computing (IN4392)}
+
+\end{frame}
+
+% \begin{frame}[t]{Agenda}
+%   \vspace{0.15cm}
+
+%   \begin{itemize}
+%     \item Introduction
+%     \item Timely Data Flow
+%     \vspace{0.35cm}
+
+%     \item Distributed Implementation 
+%     \item Programming Model
+%     \vspace{0.35cm}
+
+%     \item Performance Evaluation
+%     \item Real World Applications
+%   \end{itemize}
+
+% \end{frame}
+
+\input{santhos.tex}
+
+\input{konrad.tex}
+
+\input{bhavya.tex}
+
+\begin{frame}<handout:0>[noframenumbering]{Thank you}
+
+  \Large{SB Ramalingam Santhanakrishnan}\\
+  \vspace{1.25cm}
+  \Large{K Kleeberger}\\
+  \vspace{1.25cm}
+  \Large{B Jain}
+
+\end{frame}
+
+\end{document}

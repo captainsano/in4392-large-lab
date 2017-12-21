@@ -1,0 +1,174 @@
+\begin{frame}[t]{Distributed Implemenation}
+  \vspace{0.25cm}
+  \begin{center}
+    \emph{Naiad} is the distributed implementation of timely dataflow
+  \end{center}
+
+  \vspace{0.25cm}
+  \begin{center}
+    \includegraphics[width=0.50\textwidth]{logic}
+  \end{center}
+  \begin{itemize}\setlength\itemsep{0.25cm}
+    \item A program consists of logical stages (A, B, C)
+    \item $H(m)$ -- Partitioning function
+    \item $H(m)$ controls exchange of data between stages
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[t]{Data Parallelism}
+  \vspace{-0.5cm}
+   \begin{center}
+    \includegraphics[height=0.5\textheight]{5}
+   \end{center}
+   \begin{itemize}\setlength\itemsep{0.25cm}
+     \item Physical graph represents the chosen amount of workers and distributed connected hosts
+     \item Programmer can select which way a message should flow in the system
+stages
+\item Naiad always uses the logical graph as a decision base where data has to flow
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}[t]{Worker}
+  \vspace{0.15cm}
+  Delivers messages (data) and notifications to vertices
+
+  \begin{itemize}\setlength\itemsep{0.25cm}
+    \item Tie-breaker -- Always deliver messages before notifications
+    \item Responsible for multiple vertices
+  \end{itemize}
+
+  \vspace{0.25cm}
+  Synchronization
+  \begin{itemize}\setlength\itemsep{0.25cm}
+    \item Communicate through shared queue
+    \item Queue not necessary if \textsc{SEND/RECV} are under same worker
+    \item Re-entrancy due to loops -- enqueue for later, \\
+          coalesce incoming messages in \textsc{OnRecv} to reduce memory.
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}[t]{Progress tracking}
+\vspace{0.15cm}
+  \begin{itemize}\setlength\itemsep{0.25cm}
+     \item Local occurrence counter don't get updated directly
+     \item Change of occurrence gets broadcasted
+     \item Change gets queued and modified in FIFO order
+     \item Therefore the local counter is never before the global counter
+   \end{itemize}
+\pause
+
+  \vspace{0.25cm}
+  Optimize broadcast
+   \begin{itemize}\setlength\itemsep{0.25cm}
+     \item Rely on the logical graph, not the physical
+     \item Buffer before broadcast
+     \item Optimistically first broadcast via UDP to reduce latency
+     \item Wake up threads with either broadcast or unicast with programming primitives
+   \end{itemize}
+
+\end{frame}
+
+ \begin{frame}[t]{Fault tolerance and Availability}
+  \vspace{0.15cm}
+  \textsc{CHECKPOINT} and \textsc{RESTORE} interface
+   \begin{itemize}\setlength\itemsep{0.25cm}
+     \item Vertex
+	 \begin{itemize}\setlength\itemsep{0.25cm}
+	 	\item Either log data or
+        \item Full checkpoint when requested
+	 \end{itemize}
+     \item Progress Tracking Protocol
+     \begin{itemize}\setlength\itemsep{0.25cm}
+     	\item Full checkpointing
+     \end{itemize}
+   \end{itemize}
+   
+   \pause
+   \vspace{0.15cm}
+   Checkpointing
+   \begin{itemize}
+     \item Message delivery gets stopped
+     \item Outstanding \textsc{OnRecv} Events get delivered
+     \item Save to disk
+   \end{itemize}
+
+   \vspace{0.15cm} 
+   Restoring
+   \begin{itemize}
+   \item Revert from the last checkpoint
+   \item Vertexes of failed process get reassigned
+   \end{itemize}
+
+\end{frame}
+
+
+ %\begin{frame}[t]{}
+ % \vspace{0.15cm}
+%Tradeoff between Performance and Durability
+%   \begin{itemize}\setlength\itemsep{0.25cm}
+%     \item paper favours performance over durablity
+%     \item Prelies on durable input and output
+%   \end{itemize}
+%\end{frame}
+
+ \begin{frame}[t]{Micro Stragglers}
+  \vspace{0.15cm}
+  Tiny latencies which can add up in a large system
+ 
+  \vspace{0.25cm}
+  Network
+  \begin{itemize}\setlength\itemsep{0.15cm}
+    \item Disable Nagle's algorithms
+    \item Set smaller retry timeout for package loss
+    \item Use different network protocols in datacenters for computing
+  \end{itemize}
+
+  \vspace{0.25cm}
+  Data structure contention
+  \begin{itemize}
+    \item solved by smaller clock granularity
+  \end{itemize}
+
+  \vspace{0.25cm}
+  Garbage Collection
+  \begin{itemize}\setlength\itemsep{0.15cm}
+    \item avoid object allocation
+    \item use buffer pools
+    \item use value types
+  \end{itemize}
+
+\end{frame}
+
+ \begin{frame}[t]{Naiad Program}
+    \vspace{0.15cm}
+    \begin{itemize}\setlength\itemsep{0.25cm}
+     \item Provides public API with primitives
+     \item Higher Level APIs
+     \begin{itemize}\setlength\itemsep{0.25cm}
+      \item LINQ
+      \item MapReduce
+      \item Pregel
+     \end{itemize}
+     \item Examples do not support coordination
+     \begin{itemize}\setlength\itemsep{0.25cm}
+     \item to improve performance
+     \item concat, distinct, select
+     \end{itemize}
+     \item Generic API for vertex programming
+     \begin{itemize}\setlength\itemsep{0.25cm}
+     \item First define the behavior dataflow vertices
+     \item Second define the topology
+     \end{itemize}
+   \end{itemize}
+
+\end{frame}
+
+\begin{frame}[t]{Prototype Program}
+
+\begin{center}
+  \includegraphics[width=0.8\textwidth]{code}
+\end{center}
+
+\end{frame}
