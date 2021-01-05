@@ -10,7 +10,7 @@
     "@types/body-parser": "^1.16.5",
     "@types/cors": "^2.8.1",
     "aws-sdk": "^2.132.0",
-    "axios": "^0.17.0",
+    "axios": "^0.21.1",
     "body-parser": "^1.18.2",
     "cors": "^2.8.4",
     "express": "^4.16.2",
