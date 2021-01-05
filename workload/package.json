@@ -4,7 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "axios": "^0.17.0",
+    "axios": "^0.21.1",
     "d3": "^4.11.0",
     "moment": "^2.19.1",
     "poisson-process": "^1.0.0",
