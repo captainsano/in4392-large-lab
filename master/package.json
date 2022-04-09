@@ -11,7 +11,7 @@
     "axios": "^0.17.0",
     "body-parser": "^1.18.2",
     "express": "^4.16.2",
-    "moment": "^2.19.1",
+    "moment": "^2.29.2",
     "ramda": "^0.25.0",
     "redux": "^3.7.2",
     "redux-observable": "^0.16.0",
