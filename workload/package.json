@@ -6,7 +6,7 @@
   "dependencies": {
     "axios": "^0.17.0",
     "d3": "^4.11.0",
-    "moment": "^2.19.1",
+    "moment": "^2.29.4",
     "poisson-process": "^1.0.0",
     "request": "^2.83.0",
     "request-promise-native": "^1.0.5",
